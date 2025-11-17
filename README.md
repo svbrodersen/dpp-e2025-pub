@@ -142,6 +142,24 @@ group will answer individual questions for about 10 min.
 Your TA is **William Henrich Due** ([widu@di.ku.dk](mailto:widu@di.ku.dk)).
 William will be grading your weekly assignments.
 
+### Discussion forum(s) + course Discord link
+
+We provide a Discord channel for discussions, invite here:
+[discord.gg/Rw8J2dgmJU](https://discord.gg/Rw8J2dgmJU) (please contact
+Anders should the link expire), and advice that you join as soon as
+possible.
+
+We encourage active discussion of course subjects with fellow
+students, so long as you refrain from directly discussing or sharing
+solutions to weekly assignments and the exam/group project. Should you
+have questions pertaining to your particular solution, please ask them
+in a private message to Williams (your TA), who may refer you to Troels.
+
+Please note that while we prefer Discord for communication, you are
+free to use the Absalon discussion forum and private messaging system,
+and that no announcement shall be posted to Discord which has not
+already been posted to Absalon.
+
 ### Hendrix GPU cluster
 
 You may find it useful to make use of DIKUs GPU machines in your work.
