@@ -78,7 +78,7 @@ up to the lab sessions.
 
 ##### Wednesday
 
-* **Theme**: Cost models, advanced Futhark.
+* **Theme**: [Cost models, advanced Futhark.](slides/L2-advanced-futhark-cost-models.pdf)
 
 * **Material**:
 
