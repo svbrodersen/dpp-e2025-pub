@@ -42,7 +42,7 @@ We have also begun work on some [DPP course
 ### Lectures:
 
 * Monday    13:00 - 15:00 in 4-0-02 at Biocenter
-* Wednesday 10:00 - 12:00 in Aud 09 at August Krogh
+* Wednesday 10:00 - 12:00 in Aud 09 at HCØ
 
 <img align="left" width="300" src="https://github.com/user-attachments/assets/31e64447-eb76-4749-928c-5be09bf37bd2">
 
