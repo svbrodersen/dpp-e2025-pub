@@ -39,10 +39,10 @@ We have also begun work on some [DPP course
 
 [Official schedule](https://skema.ku.dk/tt/tt.asp?SDB=ku2526&language=EN&folder=Reporting&style=textspreadsheet&type=student+set&idtype=id&id=228694&weeks=1-53&days=1-7&periods=1-68&width=0&height=0&template=SWSCUST+student+set+textspreadsheet)
 
-### Lectures (zoom links will be posted on Absalon):
+### Lectures:
 
 * Monday    13:00 - 15:00 in 4-0-02 at Biocenter
-* Wednesday 10:00 - 12:00 in Aud 09 at August Krogh
+* Wednesday 10:00 - 12:00 in Aud 09 at HCØ
 
 <img align="left" width="300" src="https://github.com/user-attachments/assets/31e64447-eb76-4749-928c-5be09bf37bd2">
 
@@ -65,7 +65,7 @@ up to the lab sessions.
 
 ##### Monday
 
-* **Theme**: Intro, deterministic parallelism, data parallelism, Futhark.
+* **Theme**: [Intro, deterministic parallelism, data parallelism, Futhark.](slides/L1-determ-prog.pdf)
 
 * **Material**:
 
