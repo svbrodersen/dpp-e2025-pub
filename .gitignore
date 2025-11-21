@@ -1,6 +1,5 @@
 bootstrap
 **/data
-**/*.json
 **/*.actual
 **/*.expected
 weekly-1/src/ex1/main
