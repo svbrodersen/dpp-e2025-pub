@@ -54,6 +54,7 @@ def work_efficient [n] (xs: [n]i32) : [n]i32 =
 -- notest random input { [2097152]i32 }
 -- notest random input { [4194304]i32 }
 -- notest random input { [8388608]i32 }
+-- notest random input { [16777216]i32 }
 entry test_hillis = hillis_steele
 
 
@@ -80,4 +81,5 @@ entry test_hillis = hillis_steele
 -- notest random input { [2097152]i32 }
 -- notest random input { [4194304]i32 }
 -- notest random input { [8388608]i32 }
+-- notest random input { [16777216]i32 }
 entry test_efficient = work_efficient
