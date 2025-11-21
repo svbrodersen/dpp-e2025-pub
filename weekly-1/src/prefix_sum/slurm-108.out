@@ -1,0 +1,44 @@
+hendrixgpu20fl.unicph.domain
+0
+Compiling prefix.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+prefix.fut:test_hillis (no tuning file):
+[1024]i32:                                        61μs (95% CI: [      60.8,       61.7])
+[16384]i32:                                       77μs (95% CI: [      76.4,       76.7])
+[524288]i32:                                     137μs (95% CI: [     135.9,      138.7])
+[16777216]i32:                                  5890μs (95% CI: [    5883.6,     5896.0])
+[33554432]i32:                                 12325μs (95% CI: [   12309.2,    12339.4])
+[67108864]i32:                                 25844μs (95% CI: [   25790.0,    25876.0])
+[134217728]i32:                                54220μs (95% CI: [   54144.4,    54250.3])
+
+prefix.fut:test_efficient (no tuning file):
+[1024]i32:                                       212μs (95% CI: [     211.5,      212.4])
+[16384]i32:                                      281μs (95% CI: [     280.9,      282.5])
+[524288]i32:                                     379μs (95% CI: [     377.9,      379.6])
+[16777216]i32:                                  5122μs (95% CI: [    5119.0,     5124.1])
+[33554432]i32:                                  9994μs (95% CI: [    9988.7,     9998.1])
+[67108864]i32:                                 19694μs (95% CI: [   19685.3,    19702.7])
+[134217728]i32:                                39120μs (95% CI: [   39106.2,    39133.4])
+Compiling prefix.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+prefix.fut:test_hillis (no tuning file):
+[1024]i32:                                        10μs (95% CI: [       9.6,        9.6])
+[16384]i32:                                      153μs (95% CI: [     152.5,      152.8])
+[524288]i32:                                    6689μs (95% CI: [    6635.9,     6737.3])
+[16777216]i32:                                339973μs (95% CI: [  337841.6,   342690.0])
+[33554432]i32:                                723876μs (95% CI: [  720627.6,   728505.3])
+[67108864]i32:                               1665348μs (95% CI: [ 1662967.2,  1668464.6])
+[134217728]i32:                              3993856μs (95% CI: [ 3976827.3,  4013235.7])
+
+prefix.fut:test_efficient (no tuning file):
+[1024]i32:                                        12μs (95% CI: [      12.1,       12.1])
+[16384]i32:                                      120μs (95% CI: [     120.3,      120.6])
+[524288]i32:                                    8208μs (95% CI: [    8108.9,     8314.4])
+[16777216]i32:                                397195μs (95% CI: [  394839.7,   399685.0])
+[33554432]i32:                                819007μs (95% CI: [  817554.6,   822396.2])
+[67108864]i32:                               1916266μs (95% CI: [ 1913278.2,  1920999.4])
+[134217728]i32:                              3615499μs (95% CI: [ 3596561.9,  3667696.1])
