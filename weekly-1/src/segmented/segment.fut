@@ -17,9 +17,10 @@ def segreduce [n] 't (op: t -> t -> t) (ne: t)
     else 0
   ) (iota n)
   let offsets1 = scan (+) 0 keep
-  let offsets = map (\x -> x-1) offsets1
-  let max_idx = last offsets1
-  in scatter (replicate (max_idx) ne) (map2 (\i k -> if k == 1 then i else -1) offsets keep) res
+  in if (length offsets1) == 0
+    then []
+    else scatter (replicate (last offsets1) ne) 
+                 (map2 (\i k -> if k == 1 then i-1 else -1) offsets1 keep) res
 
 -- Segmented scan tests
 -- ==
