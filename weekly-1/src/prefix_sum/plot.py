@@ -2,21 +2,22 @@
 import argparse
 import json
 import sys
+import re
 from pathlib import Path
-from typing import List, Dict, Tuple, Any
+from typing import Dict, Tuple, Any
 
 import matplotlib
-# Set backend to Agg before importing pyplot to handle headless environments
+# Set backend to Agg to handle headless environments
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 import numpy as np
 
 def parse_arguments() -> argparse.Namespace:
-    """Parses command line arguments."""
-    parser = argparse.ArgumentParser(description="Plot benchmark results from JSON files.")
-    parser.add_argument("progname", type=str, help="Name of the program (e.g., 'mybench')")
-    parser.add_argument("benchmark", type=str, help="Name of the specific benchmark")
-    parser.add_argument("data_sizes", type=int, nargs='+', help="List of input data sizes (integers)")
+    """Parses command line arguments. Only requires the two file paths."""
+    parser = argparse.ArgumentParser(description="Plot benchmark results from JSON files automatically.")
+    parser.add_argument("baseline_json", type=Path, help="Path to the Sequential/C JSON file")
+    parser.add_argument("accelerated_json", type=Path, help="Path to the OpenCL/CUDA JSON file")
+    parser.add_argument("output", type=Path, help="Output filename")
     return parser.parse_args()
 
 def load_json(filepath: Path) -> Dict[str, Any]:
@@ -25,118 +26,166 @@ def load_json(filepath: Path) -> Dict[str, Any]:
         with filepath.open('r') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"Error: File '{filepath}' not found.")
+        print(f"Error: File {filepath} not found.")
         sys.exit(1)
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from '{filepath}'.")
+        print(f"Error: Failed to decode JSON from {filepath}.")
         sys.exit(1)
 
-def get_runtimes(data: Dict[str, Any], program_key: str, sizes: List[int]) -> np.ndarray:
+def extract_benchmark_data(data: Dict[str, Any]) -> Tuple[str, Dict[int, float]]:
     """
-    Extracts runtimes for specific data sizes from the JSON structure.
-    Returns a numpy array of runtimes in milliseconds.
+    Parses the JSON content dynamically.
+    
+    Returns:
+        - benchmark_name (str): The name found in the top-level key.
+        - results (Dict[int, float]): A dictionary mapping {input_size: mean_runtime_ms}
     """
+    # 1. Get the top-level key (The Program/Benchmark Name)
+    # We assume the file contains one main benchmark entry.
+    if not data:
+        print("Error: JSON file is empty.")
+        sys.exit(1)
+    
+    program_key = next(iter(data)) # e.g., "my_program.fut:benchmark1"
+    
+    # Clean up the name for the plot title
+    # Removes the .fut extension part for cleaner reading
+    benchmark_name = program_key.split(':')[-1] 
+
+    # 2. Extract Datasets
     try:
         datasets = data[program_key]['datasets']
-        runtimes = []
-        
-        for n in sizes:
-            # This key format seems specific to your use case (Futhark benchmarks?)
-            # Adjust the format string below if the JSON structure changes.
-            dataset_key = f'[{n}]i32 [{n}]i32' 
-            
-            measurements = datasets[dataset_key]['runtimes']
-            # Calculate mean and convert to milliseconds (assuming input is microseconds)
-            avg_runtime_ms = np.mean(measurements) / 1000.0
-            runtimes.append(avg_runtime_ms)
-            
-        return np.array(runtimes)
-
-    except KeyError as e:
-        print(f"Error: Key {e} not found in JSON data. Check your program name or data sizes.")
+    except KeyError:
+        print(f"Error: structure of JSON unexpected. Could not find 'datasets' under '{program_key}'")
         sys.exit(1)
 
-def create_plot(sizes: List[int], 
-                opencl_times: np.ndarray, 
-                c_times: np.ndarray, 
+    results = {}
+
+    # 3. Iterate through datasets and parse sizes using Regex
+    # Pattern looks for digits inside square brackets: [1024]
+    size_pattern = re.compile(r'\[(\d+)\]')
+
+    for dataset_key, dataset_val in datasets.items():
+        # Extract size
+        match = size_pattern.search(dataset_key)
+        if match:
+            size = int(match.group(1))
+            
+            # Extract runtimes
+            if 'runtimes' in dataset_val:
+                runtimes = dataset_val['runtimes']
+                # Calculate mean and convert microseconds to milliseconds
+                avg_runtime_ms = np.mean(runtimes) / 1000.0
+                results[size] = avg_runtime_ms
+            else:
+                print(f"Warning: No runtimes found for dataset {dataset_key}")
+        else:
+            print(f"Warning: Could not parse size from key '{dataset_key}'. Skipping.")
+
+    return benchmark_name, results
+
+def align_data(baseline_data: Dict[int, float], accel_data: Dict[int, float]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Finds common input sizes between the two datasets and returns sorted arrays.
+    """
+    # Find intersection of sizes (keys)
+    common_sizes = sorted(list(set(baseline_data.keys()) & set(accel_data.keys())))
+    
+    if not common_sizes:
+        print("Error: No common input sizes found between the two JSON files.")
+        sys.exit(1)
+
+    sizes = []
+    t_baseline = []
+    t_accel = []
+
+    for n in common_sizes:
+        sizes.append(n)
+        t_baseline.append(baseline_data[n])
+        t_accel.append(accel_data[n])
+
+    return np.array(sizes), np.array(t_baseline), np.array(t_accel)
+
+def create_plot(sizes: np.ndarray, 
+                t_accel: np.ndarray, 
+                t_base: np.ndarray, 
                 speedups: np.ndarray, 
                 benchmark_name: str,
                 output_file: str):
     """Generates and saves the matplotlib figure."""
     
-    fig, ax1 = plt.subplots(figsize=(10, 6)) # Added figsize for better default proportions
+    fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # --- Plot 1: Runtimes (Left Axis) ---
-    # Use explicit markers (o, s) to make data points visible on lines
-    p1 = ax1.plot(sizes, opencl_times, 'b-o', label='OpenCL runtime')
-    p2 = ax1.plot(sizes, c_times, 'g-s', label='Sequential runtime')
+    p1 = ax1.plot(sizes, t_accel, 'b-o', label='Accelerated (OpenCL)')
+    p2 = ax1.plot(sizes, t_base, 'g-s', label='Baseline (Seq)')
     
     ax1.set_xlabel('Input size')
     ax1.set_ylabel('Runtime (ms)', color='k')
     ax1.tick_params(axis='y', labelcolor='k')
     
-    # Set x-ticks to match the specific data sizes provided
+    # Set x-ticks
     ax1.set_xticks(sizes)
     ax1.set_xticklabels(sizes, rotation='vertical')
     
-    # Log scales often look better for benchmarks, assuming sizes grow exponentially
+    # Log scales
     ax1.set_xscale('log') 
     ax1.set_yscale('log')
 
     # --- Plot 2: Speedup (Right Axis) ---
     ax2 = ax1.twinx()
-    p3 = ax2.plot(sizes, speedups, 'k-x', label='OpenCL speedup')
+    p3 = ax2.plot(sizes, speedups, 'k-x', label='Speedup')
     
     ax2.set_ylabel('Speedup (x)', color='k')
     ax2.tick_params(axis='y', labelcolor='k')
-    # Usually speedup is linear, but uncomment below if speedups vary wildly
-    # ax2.set_yscale('log') 
 
     # --- Legend & Layout ---
-    # Combine legends from both axes
     plots = p1 + p2 + p3
     labels = [p.get_label() for p in plots]
-    ax1.legend(plots, labels, loc='best') # 'best' automatically finds the least crowded spot
+    ax1.legend(plots, labels, loc='best')
 
     ax1.set_title(f'Benchmark: {benchmark_name}')
     fig.tight_layout()
 
-    # Save
     print(f"Saving plot to {output_file}...")
     plt.savefig(output_file, bbox_inches='tight')
-    plt.close(fig) # Close memory
+    plt.close(fig)
 
 def main():
-    args = parse_arguments()
+    try:
+        args = parse_arguments()
 
-    # File definitions
-    opencl_path = Path(f'{args.progname}-opencl.json')
-    c_path = Path(f'{args.progname}-c.json')
-    
-    # Load Data
-    opencl_data = load_json(opencl_path)
-    c_data = load_json(c_path)
+        # 1. Load Data base_json = load_json(args.baseline_json)
+        accel_json = load_json(args.accelerated_json)
 
-    # Helper key
-    prog_key = f'{args.progname}.fut:{args.benchmark}'
+        # 2. Extract Info (Name and {size: runtime} dicts)
+        # We grab the benchmark name from the baseline file, assuming they are the same benchmark
+        bench_name, base_results = extract_benchmark_data(base_json)
+        _, accel_results = extract_benchmark_data(accel_json)
 
-    # Extract Data
-    t_opencl = get_runtimes(opencl_data, prog_key, args.data_sizes)
-    t_c = get_runtimes(c_data, prog_key, args.data_sizes)
+        print(f"Processing data for: {bench_name}")
 
-    # Calculate Speedup (Vectorized division)
-    # Handle division by zero if necessary (using np.where or similar)
-    speedups = t_c / t_opencl
+        # 3. Align Data (Ensure we only plot sizes that exist in BOTH files)
+        sizes, t_base, t_accel = align_data(base_results, accel_results)
 
-    # Plot
-    create_plot(
-        sizes=args.data_sizes,
-        opencl_times=t_opencl,
-        c_times=t_c,
-        speedups=speedups,
-        benchmark_name=args.benchmark,
-        output_file=f'{args.benchmark}.pdf'
-    )
+        # 4. Calculate Speedup
+        # speedup = Baseline / Accelerated
+        speedups = t_base / t_accel
+
+        # 5. Determine output filename
+        out_name = args.output
+
+        # 6. Plot
+        create_plot(
+            sizes=sizes,
+            t_accel=t_accel,
+            t_base=t_base,
+            speedups=speedups,
+            benchmark_name=bench_name,
+            output_file=out_name
+        )
+    except Exception as e:
+        print("error: ", e)
 
 if __name__ == '__main__':
     main()
