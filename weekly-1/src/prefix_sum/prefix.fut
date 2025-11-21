@@ -23,21 +23,24 @@ def work_efficient [n] (xs: [n]i32) : [n]i32 =
       let stride = 2**(d + 1)
       let offset = 2**d
       let num_idx = n / stride
-      let left_idxs = map (\i -> (i * stride + offset - 1)) (iota num_idx)
-      let right_idxs = map (\i -> (i + 1) * stride - 1) (iota num_idx)
-      let left_vals = map (\k -> xs[k + offset]) left_idxs
-      -- First item is t from paper
-      let right_vals = map (\j -> xs[j - offset] + xs[j]) right_idxs
-      let all_idxs = left_idxs ++ right_idxs
-      let all_vals = left_vals ++ right_vals
+      let iter_arr = iota (2 * num_idx)
+      let all_idxs = map (\k ->
+        let i = k / 2
+        let is_left = k % 2 == 0
+        let left_idx = i * stride + offset - 1
+        let right_idx = left_idx + offset
+        in if is_left then left_idx else right_idx
+      ) iter_arr
+      let all_vals = map (\k ->
+        let i = k / 2
+        let is_left = k % 2 == 0
+        let left_idx = i * stride + offset - 1
+        let right_idx = left_idx + offset
+        in if is_left then xs[right_idx] else xs[left_idx] + xs[right_idx]
+      ) iter_arr
       in scatter xs all_idxs all_vals
   in downswept
       
-      
-  
-
-    
-
 -- Hillis test
 -- ==
 -- entry: test_hillis
@@ -71,4 +74,5 @@ entry test_hillis = hillis_steele
 -- notest random input { [100000]i32}
 -- notest random input { [1000000]i32}
 -- notest random input { [10000000]i32}
+-- notest random input { [100000000]i32}
 entry test_efficient = work_efficient
