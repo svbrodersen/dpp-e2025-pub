@@ -24,9 +24,9 @@ def work_efficient [n] (xs: [n]i32) : [n]i32 =
       let (left_idxs, right_idxs) = map (\i -> 
         let left_idx = i + offset - 1
         in (left_idx, left_idx + offset)) (0..stride...n-1) |> unzip
-      let left_vals = map (\k -> xs[k + offset]) left_idxs
+      let left_vals = map (\r -> xs[r]) right_idxs
       -- First item is t from paper
-      let right_vals = map (\j -> xs[j - offset] + xs[j]) right_idxs
+      let right_vals = map2 (\l r -> xs[l] + xs[r]) left_idxs right_idxs
       let all_idxs = left_idxs ++ right_idxs
       let all_vals = left_vals ++ right_vals
       in scatter xs all_idxs all_vals
