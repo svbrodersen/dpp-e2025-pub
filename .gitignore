@@ -7,3 +7,7 @@ weekly-1/src/ex1/main.c
 weekly-1/src/prefix_sum/prefix
 weekly-1/src/prefix_sum/prefix.c
 tmp
+weekly-1/src/ising-handout/ising-tui
+weekly-1/src/ising-handout/ising.json
+weekly-1/src/ising-handout/ising.o
+weekly-1/src/ising-handout/ising-tui.o

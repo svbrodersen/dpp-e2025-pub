@@ -30,30 +30,46 @@ def rand = rand_f32.rand (0f32, 1f32)
 -- sized array of RNG states.
 def random_grid (seed: i32) (h: i64) (w: i64)
               : ([h][w]rng_engine.rng, [h][w]spin) =
-  let initial = rng_engine.rng_from_seed [x]
-  let n = h * w 
-  let states_flat = initial.split_rnd n
-  let spins_flat  = map (\r -> rand_i8.rand (0i8, 1i8) r) states
-  let res = zip (unflatten states_flat) (unflatten spins_flat)
-  in res
-  
+  let initial = rng_engine.rng_from_seed [seed]
+  let states_flat = rng_engine.split_rng (h * w) initial
+  let (new_states, spins) = map (\r -> rand_i8.rand (-1i8, 1i8) r) states_flat |> unzip
+  in (unflatten new_states, unflatten spins)
 
 
 -- Compute $\Delta_e$ for each spin in the grid, using wraparound at
 -- the edges.
 def deltas [h][w] (spins: [h][w]spin): [h][w]i8 =
-  ???
+   let rot_down = rotate 1 spins |> flatten
+   let rot_up = rotate (-1) spins |> flatten
+   let rot_left = map (rotate (-1)) spins |> flatten
+   let rot_right = map (rotate (1)) spins |> flatten
+   -- for spins[i, j] then l is rot_right[i, j]
+   let res = map5 (\c u d l r -> 2 * c * (u + d + l + r)) (flatten spins) rot_down rot_up rot_right rot_left
+   in unflatten res
+
 
 -- The sum of all deltas of a grid.  The result is a measure of how
 -- ordered the grid is.
-def delta_sum [h][w] (spins: [w][h]spin): i32 =
-  ???
+def delta_sum [h][w] (spins: [h][w]spin): i32 =
+  deltas spins |> flatten |> map (i32.i8) |> reduce (+) 0
 
 -- Take one step in the Ising 2D simulation.
 def step [h][w] (abs_temp: f32) (samplerate: f32)
                 (rngs: [h][w]rng_engine.rng) (spins: [h][w]spin)
               : ([h][w]rng_engine.rng, [h][w]spin) =
-  ???
+  let delta_es = deltas spins |> flatten |> map (f32.i8)
+  let (new_states, new_spins) = map3 (\r1 c delta_e ->
+    let neg_delta_e = - delta_e
+    let (r2, a) = rand_f32.rand (0f32, 1f32) r1 
+    let (new_r, b) = rand_f32.rand (0f32, 1f32) r2
+    let pow_e = f32.exp (neg_delta_e / abs_temp)
+    in
+      if (a < samplerate) && ((delta_e < neg_delta_e) || (b < pow_e)) then 
+        (new_r, -c)
+      else 
+        (new_r, c)
+  ) (flatten rngs) (flatten spins) delta_es |> unzip
+  in (unflatten new_states, unflatten new_spins)
 
 -- | Just for benchmarking.
 def main (abs_temp: f32) (samplerate: f32)
