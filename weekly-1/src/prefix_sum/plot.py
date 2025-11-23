@@ -159,6 +159,7 @@ def create_plot(sizes: np.ndarray,
     
     # Log scales often look better for benchmarks, assuming sizes grow exponentially
     ax1.set_xscale('log', base=2)
+    ax1.set_yscale('log', base=10)
 
     # --- Plot 2: Speedup (Right Axis) ---
     ax2 = ax1.twinx()
