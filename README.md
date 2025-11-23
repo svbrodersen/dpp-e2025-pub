@@ -88,6 +88,36 @@ up to the lab sessions.
 
   * [A Provable Time and Space Efficient Implementation of NESL](material/week1/a-provable-time-and-space-efficient-implementation-of-nesl.pdf)
 
+
+#### Week 2
+
+##### Monday
+
+* **Theme**: [Part I: Flattening Nested and Irregular Parallelism](slides/L3and4-irreg-flattening.pdf)
+
+* **Demo Code**
+
+  * [Lecture's Running Example](material/week2/demo-code/optimize-by-II1)
+
+* **Facultative Material**:
+
+  * [Various papers related to SCAN and flattening, but which are not very accessible to students](material/week2/papers)
+
+  * PMPH Lecture Notes, chapter 4([pdf](http://hjemmesider.diku.dk/~zgh600/Publications/lecture-notes-pmph.pdf)[bib](material/week2/lecture-notes.bib)))
+
+##### Wednesday
+
+* **Theme**: [Part II: Flattening Nested and Irregular Parallelism](slides/L3and4-irreg-flattening.pdf)
+
+* **Demo Code**
+
+  * [``To flatten or not To flatten, that is the question'': Matrix Multiplication Demo](material/week2/demo-code/to-flat-or-not-to-flat/mmm)
+
+* **Facultative Material**:
+
+  * same as above
+
+
 ## Weekly assignments
 
 <img align="right" width="300" src="https://github.com/user-attachments/assets/720668fd-cde1-4000-8729-72771f5b09b9">
