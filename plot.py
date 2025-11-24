@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Data Structure for Extracted Results ---
-# This dictionary will hold the results, structured as:
 # {
 #     'benchmark_name': {
 #         'sizes': np.ndarray[int],
@@ -49,20 +48,16 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
     """
     Parses both JSON datasets to extract runtimes and calculate speedups
     for ALL found benchmarks and data sizes.
-
-    Returns a dictionary structured by benchmark name.
     """
     all_results: BenchmarkResults = {}
     
     # The structure key is '<program_name>.fut:<benchmark>'
-    # We use c_data keys as the base, assuming opencl_data has the same structure.
     for full_key, c_data_item in c_data.items():
         if full_key not in opencl_data:
             print(f"Warning: Key '{full_key}' found in C data but not OpenCL data. Skipping.")
             continue
         
         # 1. Extract benchmark name
-        # We assume the format 'program.fut:benchmark_name'
         try:
             benchmark_name = full_key.split(':')[-1]
         except IndexError:
@@ -85,10 +80,8 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
 
             opencl_dataset = opencl_datasets[dataset_key]
             
-            # Extract size N from the dataset_key, which is assumed to be '[N]i32 ...'
+            # Extract size N from the dataset_key
             try:
-                # Extracts the number N from the string, e.g., '[1024]i32' -> 1024
-                # This logic is specific to the Futhark key format in your original script
                 size_str = dataset_key.split(']')[0].split('[')[1]
                 size_n = int(size_str)
             except (IndexError, ValueError):
@@ -96,7 +89,7 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
                 continue
             
             try:
-                # Calculate mean runtime in milliseconds (assuming input is microseconds)
+                # Calculate mean runtime in milliseconds
                 avg_c_ms = np.mean(c_dataset['runtimes']) / 1000.0
                 avg_opencl_ms = np.mean(opencl_dataset['runtimes']) / 1000.0
             except KeyError as e:
@@ -114,13 +107,9 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
         # Sort data by size
         sorted_indices = np.argsort(sizes)
         
-        # Convert to numpy arrays for vectorized operations
         np_sizes = np.array(sizes)[sorted_indices]
         np_c_times = np.array(c_runtimes)[sorted_indices]
         np_opencl_times = np.array(opencl_runtimes)[sorted_indices]
-
-        # Calculate Speedup (Vectorized division)
-        # Speedup = Sequential Time / Parallel Time
         np_speedups = np_c_times / np_opencl_times
 
         # 4. Store results
@@ -133,7 +122,7 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
 
     return all_results
 
-# --- Plotting Function (Unchanged, but now takes generic data) ---
+# --- Plotting Functions ---
 
 def create_plot(sizes: np.ndarray,
                 opencl_times: np.ndarray,
@@ -141,7 +130,7 @@ def create_plot(sizes: np.ndarray,
                 speedups: np.ndarray,
                 benchmark_name: str,
                 output_file: str):
-    """Generates and saves the matplotlib figure."""
+    """Generates and saves the individual matplotlib figure."""
     
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
@@ -157,7 +146,6 @@ def create_plot(sizes: np.ndarray,
     ax1.set_xticks(sizes)
     ax1.set_xticklabels(sizes, rotation='vertical')
     
-    # Log scales often look better for benchmarks, assuming sizes grow exponentially
     ax1.set_xscale('log', base=2)
     ax1.set_yscale('log', base=10)
 
@@ -176,8 +164,41 @@ def create_plot(sizes: np.ndarray,
     ax1.set_title(f'Benchmark: {benchmark_name}')
     fig.tight_layout()
 
-    # Save
     print(f"Saving plot for {benchmark_name} to {output_file}...")
+    plt.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+
+def create_combined_metric_plot(all_results: BenchmarkResults, 
+                                metric_key: str, 
+                                output_file: str):
+    """
+    Generates a single plot containing lines for ALL benchmarks 
+    for a specific metric (e.g., 'opencl_runtimes' or 'c_runtimes').
+    """
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Iterate through all benchmarks and plot them on the same axis
+    for benchmark_name, data in all_results.items():
+        if data['sizes'].size > 0:
+            ax.plot(data['sizes'], 
+                    data[metric_key], 
+                    marker='o', 
+                    markersize=4, 
+                    label=benchmark_name)
+
+    ax.set_xlabel('Input size')
+    ax.set_ylabel('Runtime (ms)')
+    
+    # Clean title based on key
+    title_str = "OpenCL" if "opencl" in metric_key else "Sequential C"
+    ax.set_title(f'Combined {title_str} Runtimes - All Benchmarks')
+    
+    # Add legend
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+    
+    fig.tight_layout()
+    
+    print(f"Saving combined plot to {output_file}...")
     plt.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -194,16 +215,16 @@ def main():
     opencl_data = load_json(opencl_path)
     c_data = load_json(c_path)
 
-    # 3. Extract, Process, and Prepare all results
+    # 3. Extract Results
     all_results = extract_all_benchmark_data(opencl_data, c_data)
     
     if not all_results:
         print("No complete benchmark data found to plot. Exiting.")
         sys.exit(0)
 
-    # 4. Plot all results
+    # 4. Plot Individual Results
     for benchmark_name, data in all_results.items():
-        if data['sizes'].size > 0: # Ensure we have data points for plotting
+        if data['sizes'].size > 0:
             create_plot(
                 sizes=data['sizes'],
                 opencl_times=data['opencl_runtimes'],
@@ -214,6 +235,11 @@ def main():
             )
         else:
             print(f"Warning: No valid data points to plot for benchmark '{benchmark_name}'.")
+
+    # 5. Plot Combined Results (New Functionality)
+    print("Generating combined plots...")
+    create_combined_metric_plot(all_results, 'opencl_runtimes', 'combined-opencl.pdf')
+    create_combined_metric_plot(all_results, 'c_runtimes', 'combined-c.pdf')
 
 if __name__ == '__main__':
     main()
