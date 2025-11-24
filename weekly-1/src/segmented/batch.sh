@@ -11,11 +11,11 @@
 hostname
 echo $CUDA_VISIBLE_DEVICES
 futhark bench --backend=opencl \
-	--json main-opencl.json \
-	main.fut
+	--json segment-opencl.json \
+	segment.fut
 futhark bench --backend=c \
-	--json main-c.json \
-	main.fut
+	--json segment-c.json \
+	segment.fut
 futhark bench --backend=multicore \
-	--json main-multicore.json \
-	main.fut
+	--json segment-multicore.json \
+	segment.fut

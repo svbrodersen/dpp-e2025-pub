@@ -54,14 +54,6 @@ const char *futhark_get_tuning_param_name(int);
 const char *futhark_get_tuning_param_class(int);
 
 // Arrays
-struct futhark_bool_1d;
-struct futhark_bool_1d *futhark_new_bool_1d(struct futhark_context *ctx, const bool *data, int64_t dim0);
-struct futhark_bool_1d *futhark_new_raw_bool_1d(struct futhark_context *ctx, unsigned char *data, int64_t dim0);
-int futhark_free_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr);
-int futhark_values_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr, bool *data);
-int futhark_index_bool_1d(struct futhark_context *ctx, bool *out, struct futhark_bool_1d *arr, int64_t i0);
-unsigned char *futhark_values_raw_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr);
-const int64_t *futhark_shape_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr);
 struct futhark_i32_1d;
 struct futhark_i32_1d *futhark_new_i32_1d(struct futhark_context *ctx, const int32_t *data, int64_t dim0);
 struct futhark_i32_1d *futhark_new_raw_i32_1d(struct futhark_context *ctx, unsigned char *data, int64_t dim0);
@@ -76,12 +68,8 @@ const int64_t *futhark_shape_i32_1d(struct futhark_context *ctx, struct futhark_
 
 
 // Entry points
-int futhark_entry_bench_reduce(struct futhark_context *ctx, int32_t *out0, const struct futhark_i32_1d *in0);
-int futhark_entry_bench_scan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0);
-int futhark_entry_bench_segreduce(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1);
-int futhark_entry_bench_segscan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1);
-int futhark_entry_test_segreduce(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1, const int32_t in2);
-int futhark_entry_test_segscan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1, const int32_t in2);
+int futhark_entry_test_process(struct futhark_context *ctx, int32_t *out0, const struct futhark_i32_1d *in0, const struct futhark_i32_1d *in1);
+int futhark_entry_test_process_idx(struct futhark_context *ctx, int32_t *out0, int64_t *out1, const struct futhark_i32_1d *in0, const struct futhark_i32_1d *in1);
 
 // Miscellaneous
 int futhark_context_sync(struct futhark_context *ctx);
@@ -2937,100 +2925,42 @@ static char* load_tuning_file(const char *fname,
 
 // End of tuning.h.
 
-const struct type type_ZMZNbool;
 const struct type type_ZMZNi32;
-void *futhark_new_bool_1d_wrap(struct futhark_context *ctx, const void *p, const int64_t *shape)
-{
-    return futhark_new_bool_1d(ctx, p, shape[0]);
-}
-const struct array_aux type_ZMZNbool_aux = {.name ="[]bool", .rank =1, .info =&bool_info, .new =(array_new_fn) futhark_new_bool_1d_wrap, .free =(array_free_fn) futhark_free_bool_1d, .shape =(array_shape_fn) futhark_shape_bool_1d, .values =(array_values_fn) futhark_values_bool_1d};
-const struct type type_ZMZNbool = {.name ="[]bool", .restore =(restore_fn) restore_array, .store =(store_fn) store_array, .free =(free_fn) free_array, .aux =&type_ZMZNbool_aux};
 void *futhark_new_i32_1d_wrap(struct futhark_context *ctx, const void *p, const int64_t *shape)
 {
     return futhark_new_i32_1d(ctx, p, shape[0]);
 }
 const struct array_aux type_ZMZNi32_aux = {.name ="[]i32", .rank =1, .info =&i32_info, .new =(array_new_fn) futhark_new_i32_1d_wrap, .free =(array_free_fn) futhark_free_i32_1d, .shape =(array_shape_fn) futhark_shape_i32_1d, .values =(array_values_fn) futhark_values_i32_1d};
 const struct type type_ZMZNi32 = {.name ="[]i32", .restore =(restore_fn) restore_array, .store =(store_fn) store_array, .free =(free_fn) free_array, .aux =&type_ZMZNi32_aux};
-const struct type *bench_reduce_out_types[] = {&type_i32, NULL};
-bool bench_reduce_out_unique[] = {false};
-const struct type *bench_reduce_in_types[] = {&type_ZMZNi32, NULL};
-bool bench_reduce_in_unique[] = {false};
-const char *bench_reduce_tuning_params[] = {NULL};
-int call_bench_reduce(struct futhark_context *ctx, void **outs, void **ins)
+const struct type *test_process_out_types[] = {&type_i32, NULL};
+bool test_process_out_unique[] = {false};
+const struct type *test_process_in_types[] = {&type_ZMZNi32, &type_ZMZNi32, NULL};
+bool test_process_in_unique[] = {false, false};
+const char *test_process_tuning_params[] = {NULL};
+int call_test_process(struct futhark_context *ctx, void **outs, void **ins)
 {
     int32_t *out0 = outs[0];
     struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
+    struct futhark_i32_1d * in1 = *(struct futhark_i32_1d * *) ins[1];
     
-    return futhark_entry_bench_reduce(ctx, out0, in0);
+    return futhark_entry_test_process(ctx, out0, in0, in1);
 }
-const struct type *bench_scan_out_types[] = {&type_ZMZNi32, NULL};
-bool bench_scan_out_unique[] = {true};
-const struct type *bench_scan_in_types[] = {&type_ZMZNi32, NULL};
-bool bench_scan_in_unique[] = {false};
-const char *bench_scan_tuning_params[] = {NULL};
-int call_bench_scan(struct futhark_context *ctx, void **outs, void **ins)
+const struct type *test_process_idx_out_types[] = {&type_i32, &type_i64, NULL};
+bool test_process_idx_out_unique[] = {false, false};
+const struct type *test_process_idx_in_types[] = {&type_ZMZNi32, &type_ZMZNi32, NULL};
+bool test_process_idx_in_unique[] = {false, false};
+const char *test_process_idx_tuning_params[] = {NULL};
+int call_test_process_idx(struct futhark_context *ctx, void **outs, void **ins)
 {
-    struct futhark_i32_1d * *out0 = outs[0];
+    int32_t *out0 = outs[0];
+    int64_t *out1 = outs[1];
     struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
+    struct futhark_i32_1d * in1 = *(struct futhark_i32_1d * *) ins[1];
     
-    return futhark_entry_bench_scan(ctx, out0, in0);
+    return futhark_entry_test_process_idx(ctx, out0, out1, in0, in1);
 }
-const struct type *bench_segreduce_out_types[] = {&type_ZMZNi32, NULL};
-bool bench_segreduce_out_unique[] = {true};
-const struct type *bench_segreduce_in_types[] = {&type_ZMZNi32, &type_ZMZNbool, NULL};
-bool bench_segreduce_in_unique[] = {false, false};
-const char *bench_segreduce_tuning_params[] = {NULL};
-int call_bench_segreduce(struct futhark_context *ctx, void **outs, void **ins)
-{
-    struct futhark_i32_1d * *out0 = outs[0];
-    struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
-    struct futhark_bool_1d * in1 = *(struct futhark_bool_1d * *) ins[1];
-    
-    return futhark_entry_bench_segreduce(ctx, out0, in0, in1);
-}
-const struct type *bench_segscan_out_types[] = {&type_ZMZNi32, NULL};
-bool bench_segscan_out_unique[] = {true};
-const struct type *bench_segscan_in_types[] = {&type_ZMZNi32, &type_ZMZNbool, NULL};
-bool bench_segscan_in_unique[] = {false, false};
-const char *bench_segscan_tuning_params[] = {NULL};
-int call_bench_segscan(struct futhark_context *ctx, void **outs, void **ins)
-{
-    struct futhark_i32_1d * *out0 = outs[0];
-    struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
-    struct futhark_bool_1d * in1 = *(struct futhark_bool_1d * *) ins[1];
-    
-    return futhark_entry_bench_segscan(ctx, out0, in0, in1);
-}
-const struct type *test_segreduce_out_types[] = {&type_ZMZNi32, NULL};
-bool test_segreduce_out_unique[] = {true};
-const struct type *test_segreduce_in_types[] = {&type_ZMZNi32, &type_ZMZNbool, &type_i32, NULL};
-bool test_segreduce_in_unique[] = {false, false, false};
-const char *test_segreduce_tuning_params[] = {NULL};
-int call_test_segreduce(struct futhark_context *ctx, void **outs, void **ins)
-{
-    struct futhark_i32_1d * *out0 = outs[0];
-    struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
-    struct futhark_bool_1d * in1 = *(struct futhark_bool_1d * *) ins[1];
-    int32_t in2 = *(int32_t *) ins[2];
-    
-    return futhark_entry_test_segreduce(ctx, out0, in0, in1, in2);
-}
-const struct type *test_segscan_out_types[] = {&type_ZMZNi32, NULL};
-bool test_segscan_out_unique[] = {true};
-const struct type *test_segscan_in_types[] = {&type_ZMZNi32, &type_ZMZNbool, &type_i32, NULL};
-bool test_segscan_in_unique[] = {false, false, false};
-const char *test_segscan_tuning_params[] = {NULL};
-int call_test_segscan(struct futhark_context *ctx, void **outs, void **ins)
-{
-    struct futhark_i32_1d * *out0 = outs[0];
-    struct futhark_i32_1d * in0 = *(struct futhark_i32_1d * *) ins[0];
-    struct futhark_bool_1d * in1 = *(struct futhark_bool_1d * *) ins[1];
-    int32_t in2 = *(int32_t *) ins[2];
-    
-    return futhark_entry_test_segscan(ctx, out0, in0, in1, in2);
-}
-const struct type *types[] = {&type_i8, &type_i16, &type_i32, &type_i64, &type_u8, &type_u16, &type_u32, &type_u64, &type_f16, &type_f32, &type_f64, &type_bool, &type_ZMZNbool, &type_ZMZNi32, NULL};
-struct entry_point entry_points[] = {{.name ="bench_reduce", .f =call_bench_reduce, .tuning_params =bench_reduce_tuning_params, .in_types =bench_reduce_in_types, .out_types =bench_reduce_out_types, .in_unique =bench_reduce_in_unique, .out_unique =bench_reduce_out_unique}, {.name ="bench_scan", .f =call_bench_scan, .tuning_params =bench_scan_tuning_params, .in_types =bench_scan_in_types, .out_types =bench_scan_out_types, .in_unique =bench_scan_in_unique, .out_unique =bench_scan_out_unique}, {.name ="bench_segreduce", .f =call_bench_segreduce, .tuning_params =bench_segreduce_tuning_params, .in_types =bench_segreduce_in_types, .out_types =bench_segreduce_out_types, .in_unique =bench_segreduce_in_unique, .out_unique =bench_segreduce_out_unique}, {.name ="bench_segscan", .f =call_bench_segscan, .tuning_params =bench_segscan_tuning_params, .in_types =bench_segscan_in_types, .out_types =bench_segscan_out_types, .in_unique =bench_segscan_in_unique, .out_unique =bench_segscan_out_unique}, {.name ="test_segreduce", .f =call_test_segreduce, .tuning_params =test_segreduce_tuning_params, .in_types =test_segreduce_in_types, .out_types =test_segreduce_out_types, .in_unique =test_segreduce_in_unique, .out_unique =test_segreduce_out_unique}, {.name ="test_segscan", .f =call_test_segscan, .tuning_params =test_segscan_tuning_params, .in_types =test_segscan_in_types, .out_types =test_segscan_out_types, .in_unique =test_segscan_in_unique, .out_unique =test_segscan_out_unique}, {.name =NULL}};
+const struct type *types[] = {&type_i8, &type_i16, &type_i32, &type_i64, &type_u8, &type_u16, &type_u32, &type_u64, &type_f16, &type_f32, &type_f64, &type_bool, &type_ZMZNi32, NULL};
+struct entry_point entry_points[] = {{.name ="test_process", .f =call_test_process, .tuning_params =test_process_tuning_params, .in_types =test_process_in_types, .out_types =test_process_out_types, .in_unique =test_process_in_unique, .out_unique =test_process_out_unique}, {.name ="test_process_idx", .f =call_test_process_idx, .tuning_params =test_process_idx_tuning_params, .in_types =test_process_idx_in_types, .out_types =test_process_idx_out_types, .in_unique =test_process_idx_in_unique, .out_unique =test_process_idx_out_unique}, {.name =NULL}};
 struct futhark_prog prog = {.types =types, .entry_points =entry_points};
 int parse_options(struct futhark_context_config *cfg, int argc, char *const argv[])
 {
@@ -8471,26 +8401,10 @@ static int mc_event_report(struct str_builder* sb, struct mc_event* e) {
 
 struct program {
     int dummy;
-    int64_t futhark_mc_segred_task_7429_total_time;
-    int64_t futhark_mc_segred_task_7429_total_iter;
-    int64_t futhark_mc_segscan_task_7438_total_time;
-    int64_t futhark_mc_segscan_task_7438_total_iter;
-    int64_t futhark_mc_segscan_task_7456_total_time;
-    int64_t futhark_mc_segscan_task_7456_total_iter;
-    int64_t futhark_mc_segscan_task_7468_total_time;
-    int64_t futhark_mc_segscan_task_7468_total_iter;
-    int64_t futhark_mc_segmap_task_7481_total_time;
-    int64_t futhark_mc_segmap_task_7481_total_iter;
-    int64_t futhark_mc_segscan_task_7490_total_time;
-    int64_t futhark_mc_segscan_task_7490_total_iter;
-    int64_t futhark_mc_segscan_task_7509_total_time;
-    int64_t futhark_mc_segscan_task_7509_total_iter;
-    int64_t futhark_mc_segscan_task_7521_total_time;
-    int64_t futhark_mc_segscan_task_7521_total_iter;
-    int64_t futhark_mc_segmap_task_7534_total_time;
-    int64_t futhark_mc_segmap_task_7534_total_iter;
-    int64_t futhark_mc_segscan_task_7543_total_time;
-    int64_t futhark_mc_segscan_task_7543_total_iter;
+    int64_t futhark_mc_segred_task_5917_total_time;
+    int64_t futhark_mc_segred_task_5917_total_iter;
+    int64_t futhark_mc_segred_task_5927_total_time;
+    int64_t futhark_mc_segred_task_5927_total_iter;
 };
 static void setup_program(struct futhark_context *ctx)
 {
@@ -8500,26 +8414,10 @@ static void setup_program(struct futhark_context *ctx)
     
     (void) error;
     ctx->program = malloc(sizeof(struct program));
-    ctx->program->futhark_mc_segred_task_7429_total_time = 0;
-    ctx->program->futhark_mc_segred_task_7429_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7438_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7438_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7456_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7456_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7468_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7468_total_iter = 0;
-    ctx->program->futhark_mc_segmap_task_7481_total_time = 0;
-    ctx->program->futhark_mc_segmap_task_7481_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7490_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7490_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7509_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7509_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7521_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7521_total_iter = 0;
-    ctx->program->futhark_mc_segmap_task_7534_total_time = 0;
-    ctx->program->futhark_mc_segmap_task_7534_total_iter = 0;
-    ctx->program->futhark_mc_segscan_task_7543_total_time = 0;
-    ctx->program->futhark_mc_segscan_task_7543_total_iter = 0;
+    ctx->program->futhark_mc_segred_task_5917_total_time = 0;
+    ctx->program->futhark_mc_segred_task_5917_total_iter = 0;
+    ctx->program->futhark_mc_segred_task_5927_total_time = 0;
+    ctx->program->futhark_mc_segred_task_5927_total_iter = 0;
 }
 static void teardown_program(struct futhark_context *ctx)
 {
@@ -9109,12 +9007,8 @@ GEN_LMAD_COPY(8b, uint64_t)
 
 #define FUTHARK_FUN_ATTR static
 
-FUTHARK_FUN_ATTR int futrts_entry_bench_reduce(struct futhark_context *ctx, int32_t *out_prim_out_7427, struct memblock inp_mem_7349, int64_t dz2080U_6997);
-FUTHARK_FUN_ATTR int futrts_entry_bench_scan(struct futhark_context *ctx, struct memblock *mem_out_p_7436, struct memblock inp_mem_7349, int64_t dz2080U_6722);
-FUTHARK_FUN_ATTR int futrts_entry_bench_segreduce(struct futhark_context *ctx, struct memblock *mem_out_p_7449, int64_t *out_prim_out_7450, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6967);
-FUTHARK_FUN_ATTR int futrts_entry_bench_segscan(struct futhark_context *ctx, struct memblock *mem_out_p_7487, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6693);
-FUTHARK_FUN_ATTR int futrts_entry_test_segreduce(struct futhark_context *ctx, struct memblock *mem_out_p_7502, int64_t *out_prim_out_7503, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6583, int32_t ne_6586);
-FUTHARK_FUN_ATTR int futrts_entry_test_segscan(struct futhark_context *ctx, struct memblock *mem_out_p_7540, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6241, int32_t ne_6244);
+FUTHARK_FUN_ATTR int futrts_entry_test_process(struct futhark_context *ctx, int32_t *out_prim_out_5915, struct memblock xs_mem_5870, struct memblock ys_mem_5871, int64_t nz2080U_5563);
+FUTHARK_FUN_ATTR int futrts_entry_test_process_idx(struct futhark_context *ctx, int32_t *out_prim_out_5924, int64_t *out_prim_out_5925, struct memblock xs_mem_5870, struct memblock ys_mem_5871, int64_t nz2080U_5714);
 
 static int init_constants(struct futhark_context *ctx)
 {
@@ -9131,2973 +9025,561 @@ static int free_constants(struct futhark_context *ctx)
     (void) ctx;
     return 0;
 }
-struct futhark_mc_task_7428 {
+struct futhark_mc_task_5916 {
     struct futhark_context *ctx;
-    int64_t free_flat_tid_7329;
-    unsigned char *free_inp_mem_7349;
-    int32_t *retval_defunc_0_reduce_res_7254;
+    int64_t free_flat_tid_5864;
+    unsigned char *free_xs_mem_5870;
+    unsigned char *free_ys_mem_5871;
+    int32_t *retval_defunc_0_reduce_res_5860;
 };
-struct futhark_mc_segred_stage_1_parloop_struct_7431 {
+struct futhark_mc_segred_stage_1_parloop_struct_5919 {
     struct futhark_context *ctx;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_reduce_stage_1_tid_res_arr_mem_7365;
+    unsigned char *free_xs_mem_5870;
+    unsigned char *free_ys_mem_5871;
+    unsigned char *free_reduce_stage_1_tid_res_arr_mem_5874;
 };
-static int futhark_mc_segred_stage_1_parloop_7432(void *args, int64_t start, int64_t end, int subtask_id, int tid)
+static int futhark_mc_segred_stage_1_parloop_5920(void *args, int64_t start, int64_t end, int subtask_id, int tid)
 {
     (void) subtask_id;
     (void) tid;
     
     int err = 0;
-    struct futhark_mc_segred_stage_1_parloop_struct_7431 *futhark_mc_segred_stage_1_parloop_struct_7431 = (struct futhark_mc_segred_stage_1_parloop_struct_7431 *) args;
-    struct futhark_context *ctx = futhark_mc_segred_stage_1_parloop_struct_7431->ctx;
-    struct mc_event *event_7433 = mc_event_new(ctx);
+    struct futhark_mc_segred_stage_1_parloop_struct_5919 *futhark_mc_segred_stage_1_parloop_struct_5919 = (struct futhark_mc_segred_stage_1_parloop_struct_5919 *) args;
+    struct futhark_context *ctx = futhark_mc_segred_stage_1_parloop_struct_5919->ctx;
+    struct mc_event *event_5921 = mc_event_new(ctx);
     
-    if (event_7433 != NULL)
-        event_7433->bef = get_wall_time();
+    if (event_5921 != NULL)
+        event_5921->bef = get_wall_time();
     
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_segred_stage_1_parloop_struct_7431->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock reduce_stage_1_tid_res_arr_mem_7365 = {.desc ="reduce_stage_1_tid_res_arr_mem_7365", .mem =futhark_mc_segred_stage_1_parloop_struct_7431->free_reduce_stage_1_tid_res_arr_mem_7365, .size =0, .references =NULL};
+    struct memblock xs_mem_5870 = {.desc ="xs_mem_5870", .mem =futhark_mc_segred_stage_1_parloop_struct_5919->free_xs_mem_5870, .size =0, .references =NULL};
+    struct memblock ys_mem_5871 = {.desc ="ys_mem_5871", .mem =futhark_mc_segred_stage_1_parloop_struct_5919->free_ys_mem_5871, .size =0, .references =NULL};
+    struct memblock reduce_stage_1_tid_res_arr_mem_5874 = {.desc ="reduce_stage_1_tid_res_arr_mem_5874", .mem =futhark_mc_segred_stage_1_parloop_struct_5919->free_reduce_stage_1_tid_res_arr_mem_5874, .size =0, .references =NULL};
     int64_t iterations = end - start;
-    int64_t flat_tid_7329;
+    int64_t flat_tid_5864;
     
-    flat_tid_7329 = subtask_id;
+    flat_tid_5864 = subtask_id;
     {
-        int32_t eta_p_7367;
-        int32_t eta_p_7368;
-        int32_t local_acc_7370 = 0;
-        int32_t eta_p_7072;
-        int32_t eta_p_7073;
-        int32_t local_acc_7371 = 0;
-        int64_t start_7372;
-        int64_t end_7373;
+        int32_t eta_p_5876;
+        int32_t eta_p_5877;
+        int32_t local_acc_5879 = 0;
+        int32_t eta_p_5832;
+        int32_t eta_p_5833;
+        int32_t local_acc_5880 = 0;
+        int64_t start_5881;
+        int64_t end_5882;
         
-        start_7372 = start;
-        end_7373 = end;
+        start_5881 = start;
+        end_5882 = end;
         
-        int64_t n_7374 = end_7373 - start_7372;
+        int64_t n_5883 = end_5882 - start_5881;
         
-        for (int64_t SegRed_i_7375 = start_7372; SegRed_i_7375 < start_7372 + n_7374; SegRed_i_7375++) {
-            int64_t gtid_7330 = SegRed_i_7375;
-            int32_t x_7075 = ((int32_t *) inp_mem_7349.mem)[gtid_7330];
+        for (int64_t SegRed_i_5884 = start_5881; SegRed_i_5884 < start_5881 + n_5883; SegRed_i_5884++) {
+            int64_t gtid_5865 = SegRed_i_5884;
+            int32_t eta_p_5854 = ((int32_t *) xs_mem_5870.mem)[gtid_5865];
+            int32_t eta_p_5855 = ((int32_t *) ys_mem_5871.mem)[gtid_5865];
+            int32_t defunc_0_f_res_5856 = sub32(eta_p_5854, eta_p_5855);
+            int32_t abs_res_5858 = abs32(defunc_0_f_res_5856);
             
             // save map-out results
             { }
             // Load accum params
             {
-                eta_p_7072 = local_acc_7371;
+                eta_p_5832 = local_acc_5880;
             }
             // Load next params
             {
-                eta_p_7073 = x_7075;
+                eta_p_5833 = abs_res_5858;
             }
             // SegRed body
             {
-                int32_t defunc_0_op_res_7074 = add32(eta_p_7072, eta_p_7073);
+                int32_t max_res_5834 = smax32(eta_p_5832, eta_p_5833);
                 
-                local_acc_7371 = defunc_0_op_res_7074;
+                local_acc_5880 = max_res_5834;
             }
         }
         
-        int64_t uni_i_7376 = 0;
+        int64_t uni_i_5885 = 0;
         
         {
-            int64_t gtid_7330 = uni_i_7376;
+            int64_t gtid_5865 = uni_i_5885;
             
             // Load accum params
             {
-                eta_p_7367 = local_acc_7370;
+                eta_p_5876 = local_acc_5879;
             }
             // Load next params
             {
-                eta_p_7368 = local_acc_7371;
+                eta_p_5877 = local_acc_5880;
             }
             // SegRed body
             {
-                int32_t defunc_0_op_res_7369 = add32(eta_p_7367, eta_p_7368);
+                int32_t max_res_5878 = smax32(eta_p_5876, eta_p_5877);
                 
-                local_acc_7370 = defunc_0_op_res_7369;
+                local_acc_5879 = max_res_5878;
             }
         }
-        ((int32_t *) reduce_stage_1_tid_res_arr_mem_7365.mem)[flat_tid_7329] = local_acc_7370;
+        ((int32_t *) reduce_stage_1_tid_res_arr_mem_5874.mem)[flat_tid_5864] = local_acc_5879;
     }
     
   cleanup:
     { }
-    if (event_7433 != NULL) {
-        event_7433->aft = get_wall_time();
+    if (event_5921 != NULL) {
+        event_5921->aft = get_wall_time();
         lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segred_stage_1_parloop_7432", strdup("nothing further"), event_7433, (event_report_fn) mc_event_report);
+        add_event(ctx, "futhark_mc_segred_stage_1_parloop_5920", strdup("nothing further"), event_5921, (event_report_fn) mc_event_report);
         lock_unlock(&ctx->event_list_lock);
     }
     return err;
 }
-int futhark_mc_segred_task_7429(void *args, int64_t iterations, int tid, struct scheduler_info info)
+int futhark_mc_segred_task_5917(void *args, int64_t iterations, int tid, struct scheduler_info info)
 {
     int err = 0;
     int subtask_id = tid;
-    struct futhark_mc_task_7428 *futhark_mc_task_7428 = (struct futhark_mc_task_7428 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7428->ctx;
-    struct mc_event *event_7435 = mc_event_new(ctx);
+    struct futhark_mc_task_5916 *futhark_mc_task_5916 = (struct futhark_mc_task_5916 *) args;
+    struct futhark_context *ctx = futhark_mc_task_5916->ctx;
+    struct mc_event *event_5923 = mc_event_new(ctx);
     
-    if (event_7435 != NULL)
-        event_7435->bef = get_wall_time();
+    if (event_5923 != NULL)
+        event_5923->bef = get_wall_time();
     
-    int64_t flat_tid_7329 = futhark_mc_task_7428->free_flat_tid_7329;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7428->free_inp_mem_7349, .size =0, .references =NULL};
-    int32_t defunc_0_reduce_res_7254 = *futhark_mc_task_7428->retval_defunc_0_reduce_res_7254;
-    int64_t reduce_stage_1_tid_res_arr_mem_7365_cached_sizze_7430 = 0;
-    unsigned char *reduce_stage_1_tid_res_arr_mem_7365 = NULL;
-    int32_t nsubtasks_7364;
+    int64_t flat_tid_5864 = futhark_mc_task_5916->free_flat_tid_5864;
+    struct memblock xs_mem_5870 = {.desc ="xs_mem_5870", .mem =futhark_mc_task_5916->free_xs_mem_5870, .size =0, .references =NULL};
+    struct memblock ys_mem_5871 = {.desc ="ys_mem_5871", .mem =futhark_mc_task_5916->free_ys_mem_5871, .size =0, .references =NULL};
+    int32_t defunc_0_reduce_res_5860 = *futhark_mc_task_5916->retval_defunc_0_reduce_res_5860;
+    int64_t reduce_stage_1_tid_res_arr_mem_5874_cached_sizze_5918 = 0;
+    unsigned char *reduce_stage_1_tid_res_arr_mem_5874 = NULL;
+    int32_t nsubtasks_5873;
     
-    nsubtasks_7364 = info.nsubtasks;
-    if (reduce_stage_1_tid_res_arr_mem_7365_cached_sizze_7430 < (int64_t) 4 * nsubtasks_7364) {
-        err = lexical_realloc(ctx, &reduce_stage_1_tid_res_arr_mem_7365, &reduce_stage_1_tid_res_arr_mem_7365_cached_sizze_7430, (int64_t) 4 * nsubtasks_7364);
+    nsubtasks_5873 = info.nsubtasks;
+    if (reduce_stage_1_tid_res_arr_mem_5874_cached_sizze_5918 < (int64_t) 4 * nsubtasks_5873) {
+        err = lexical_realloc(ctx, &reduce_stage_1_tid_res_arr_mem_5874, &reduce_stage_1_tid_res_arr_mem_5874_cached_sizze_5918, (int64_t) 4 * nsubtasks_5873);
         if (err != FUTHARK_SUCCESS)
             goto cleanup;
     }
     
-    struct futhark_mc_segred_stage_1_parloop_struct_7431 futhark_mc_segred_stage_1_parloop_struct_7431_;
+    struct futhark_mc_segred_stage_1_parloop_struct_5919 futhark_mc_segred_stage_1_parloop_struct_5919_;
     
-    futhark_mc_segred_stage_1_parloop_struct_7431_.ctx = ctx;
-    futhark_mc_segred_stage_1_parloop_struct_7431_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_segred_stage_1_parloop_struct_7431_.free_reduce_stage_1_tid_res_arr_mem_7365 = reduce_stage_1_tid_res_arr_mem_7365;
+    futhark_mc_segred_stage_1_parloop_struct_5919_.ctx = ctx;
+    futhark_mc_segred_stage_1_parloop_struct_5919_.free_xs_mem_5870 = xs_mem_5870.mem;
+    futhark_mc_segred_stage_1_parloop_struct_5919_.free_ys_mem_5871 = ys_mem_5871.mem;
+    futhark_mc_segred_stage_1_parloop_struct_5919_.free_reduce_stage_1_tid_res_arr_mem_5874 = reduce_stage_1_tid_res_arr_mem_5874;
     
-    struct scheduler_parloop futhark_mc_segred_stage_1_parloop_7432_task;
+    struct scheduler_parloop futhark_mc_segred_stage_1_parloop_5920_task;
     
-    futhark_mc_segred_stage_1_parloop_7432_task.name = "futhark_mc_segred_stage_1_parloop_7432";
-    futhark_mc_segred_stage_1_parloop_7432_task.fn = futhark_mc_segred_stage_1_parloop_7432;
-    futhark_mc_segred_stage_1_parloop_7432_task.args = &futhark_mc_segred_stage_1_parloop_struct_7431_;
-    futhark_mc_segred_stage_1_parloop_7432_task.iterations = iterations;
-    futhark_mc_segred_stage_1_parloop_7432_task.info = info;
+    futhark_mc_segred_stage_1_parloop_5920_task.name = "futhark_mc_segred_stage_1_parloop_5920";
+    futhark_mc_segred_stage_1_parloop_5920_task.fn = futhark_mc_segred_stage_1_parloop_5920;
+    futhark_mc_segred_stage_1_parloop_5920_task.args = &futhark_mc_segred_stage_1_parloop_struct_5919_;
+    futhark_mc_segred_stage_1_parloop_5920_task.iterations = iterations;
+    futhark_mc_segred_stage_1_parloop_5920_task.info = info;
     
-    struct mc_event *event_7434 = mc_event_new(ctx);
+    struct mc_event *event_5922 = mc_event_new(ctx);
     
-    if (event_7434 != NULL)
-        event_7434->bef = get_wall_time();
+    if (event_5922 != NULL)
+        event_5922->bef = get_wall_time();
     
-    int futhark_mc_segred_stage_1_parloop_7432_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_segred_stage_1_parloop_7432_task);
+    int futhark_mc_segred_stage_1_parloop_5920_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_segred_stage_1_parloop_5920_task);
     
-    if (futhark_mc_segred_stage_1_parloop_7432_err != 0) {
-        err = futhark_mc_segred_stage_1_parloop_7432_err;
+    if (futhark_mc_segred_stage_1_parloop_5920_err != 0) {
+        err = futhark_mc_segred_stage_1_parloop_5920_err;
         goto cleanup;
     }
-    if (event_7434 != NULL) {
-        event_7434->aft = get_wall_time();
+    if (event_5922 != NULL) {
+        event_5922->aft = get_wall_time();
         lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segred_stage_1_parloop_7432_total", strdup("nothing further"), event_7434, (event_report_fn) mc_event_report);
+        add_event(ctx, "futhark_mc_segred_stage_1_parloop_5920_total", strdup("nothing further"), event_5922, (event_report_fn) mc_event_report);
         lock_unlock(&ctx->event_list_lock);
     }
     // neutral-initialise the output
     {
-        defunc_0_reduce_res_7254 = 0;
+        defunc_0_reduce_res_5860 = 0;
     }
     
-    int32_t eta_p_7377;
-    int32_t eta_p_7378;
+    int32_t eta_p_5886;
+    int32_t eta_p_5887;
     
-    for (int32_t i_7380 = 0; i_7380 < nsubtasks_7364; i_7380++) {
-        flat_tid_7329 = i_7380;
+    for (int32_t i_5889 = 0; i_5889 < nsubtasks_5873; i_5889++) {
+        flat_tid_5864 = i_5889;
         // Apply main thread reduction
         {
             // load acc params
             {
-                eta_p_7377 = defunc_0_reduce_res_7254;
+                eta_p_5886 = defunc_0_reduce_res_5860;
             }
             // load next params
             {
-                eta_p_7378 = ((int32_t *) reduce_stage_1_tid_res_arr_mem_7365)[flat_tid_7329];
+                eta_p_5887 = ((int32_t *) reduce_stage_1_tid_res_arr_mem_5874)[flat_tid_5864];
             }
             // red body
             {
-                int32_t defunc_0_op_res_7379 = add32(eta_p_7377, eta_p_7378);
+                int32_t max_res_5888 = smax32(eta_p_5886, eta_p_5887);
                 
-                defunc_0_reduce_res_7254 = defunc_0_op_res_7379;
+                defunc_0_reduce_res_5860 = max_res_5888;
             }
         }
     }
     
   cleanup:
     {
-        free(reduce_stage_1_tid_res_arr_mem_7365);
+        free(reduce_stage_1_tid_res_arr_mem_5874);
     }
-    if (event_7435 != NULL) {
-        event_7435->aft = get_wall_time();
+    if (event_5923 != NULL) {
+        event_5923->aft = get_wall_time();
         lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segred_task_7429", strdup("nothing further"), event_7435, (event_report_fn) mc_event_report);
+        add_event(ctx, "futhark_mc_segred_task_5917", strdup("nothing further"), event_5923, (event_report_fn) mc_event_report);
         lock_unlock(&ctx->event_list_lock);
     }
     if (err == 0) {
-        *futhark_mc_task_7428->retval_defunc_0_reduce_res_7254 = defunc_0_reduce_res_7254;
+        *futhark_mc_task_5916->retval_defunc_0_reduce_res_5860 = defunc_0_reduce_res_5860;
     }
     return err;
 }
-struct futhark_mc_task_7437 {
+struct futhark_mc_task_5926 {
     struct futhark_context *ctx;
-    int64_t free_dz2080U_6722;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_mem_7351;
+    int64_t free_flat_tid_5866;
+    unsigned char *free_xs_mem_5870;
+    unsigned char *free_ys_mem_5871;
+    int32_t *retval_defunc_0_reduce_comm_res_5862;
+    int64_t *retval_defunc_0_reduce_comm_res_5863;
 };
-struct futhark_mc_scan_stage_1_parloop_struct_7440 {
+struct futhark_mc_segred_stage_1_parloop_struct_5930 {
     struct futhark_context *ctx;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_mem_7351;
+    unsigned char *free_xs_mem_5870;
+    unsigned char *free_ys_mem_5871;
+    unsigned char *free_reduce_stage_1_tid_res_arr_mem_5875;
+    unsigned char *free_reduce_stage_1_tid_res_arr_mem_5877;
 };
-static int futhark_mc_scan_stage_1_parloop_7441(void *args, int64_t start, int64_t end, int subtask_id, int tid)
+static int futhark_mc_segred_stage_1_parloop_5931(void *args, int64_t start, int64_t end, int subtask_id, int tid)
 {
     (void) subtask_id;
     (void) tid;
     
     int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7440 *futhark_mc_scan_stage_1_parloop_struct_7440 = (struct futhark_mc_scan_stage_1_parloop_struct_7440 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7440->ctx;
-    struct mc_event *event_7442 = mc_event_new(ctx);
+    struct futhark_mc_segred_stage_1_parloop_struct_5930 *futhark_mc_segred_stage_1_parloop_struct_5930 = (struct futhark_mc_segred_stage_1_parloop_struct_5930 *) args;
+    struct futhark_context *ctx = futhark_mc_segred_stage_1_parloop_struct_5930->ctx;
+    struct mc_event *event_5932 = mc_event_new(ctx);
     
-    if (event_7442 != NULL)
-        event_7442->bef = get_wall_time();
+    if (event_5932 != NULL)
+        event_5932->bef = get_wall_time();
     
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_scan_stage_1_parloop_struct_7440->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock mem_7351 = {.desc ="mem_7351", .mem =futhark_mc_scan_stage_1_parloop_struct_7440->free_mem_7351, .size =0, .references =NULL};
+    struct memblock xs_mem_5870 = {.desc ="xs_mem_5870", .mem =futhark_mc_segred_stage_1_parloop_struct_5930->free_xs_mem_5870, .size =0, .references =NULL};
+    struct memblock ys_mem_5871 = {.desc ="ys_mem_5871", .mem =futhark_mc_segred_stage_1_parloop_struct_5930->free_ys_mem_5871, .size =0, .references =NULL};
+    struct memblock reduce_stage_1_tid_res_arr_mem_5875 = {.desc ="reduce_stage_1_tid_res_arr_mem_5875", .mem =futhark_mc_segred_stage_1_parloop_struct_5930->free_reduce_stage_1_tid_res_arr_mem_5875, .size =0, .references =NULL};
+    struct memblock reduce_stage_1_tid_res_arr_mem_5877 = {.desc ="reduce_stage_1_tid_res_arr_mem_5877", .mem =futhark_mc_segred_stage_1_parloop_struct_5930->free_reduce_stage_1_tid_res_arr_mem_5877, .size =0, .references =NULL};
     int64_t iterations = end - start;
-    int64_t flat_tid_7327;
+    int64_t flat_tid_5866;
     
-    flat_tid_7327 = subtask_id;
-    
-    int32_t eta_p_7072;
-    int32_t eta_p_7073;
-    
-    eta_p_7072 = 0;
+    flat_tid_5866 = subtask_id;
     {
-        int64_t start_7365;
-        int64_t end_7366;
+        int32_t eta_p_5879;
+        int64_t eta_p_5880;
+        int32_t eta_p_5881;
+        int64_t eta_p_5882;
+        int32_t local_acc_5892 = 0;
+        int64_t local_acc_5893 = (int64_t) -1;
+        int32_t eta_p_5834;
+        int64_t eta_p_5835;
+        int32_t eta_p_5836;
+        int64_t eta_p_5837;
+        int32_t local_acc_5894 = 0;
+        int64_t local_acc_5895 = (int64_t) -1;
+        int64_t start_5896;
+        int64_t end_5897;
         
-        start_7365 = start;
-        end_7366 = end;
+        start_5896 = start;
+        end_5897 = end;
         
-        int64_t n_7367 = end_7366 - start_7365;
+        int64_t n_5898 = end_5897 - start_5896;
         
-        for (int64_t SegScan_i_7368 = start_7365; SegScan_i_7368 < start_7365 + n_7367; SegScan_i_7368++) {
-            int64_t gtid_7328 = SegScan_i_7368;
-            int32_t x_7075 = ((int32_t *) inp_mem_7349.mem)[gtid_7328];
+        for (int64_t SegRed_i_5899 = start_5896; SegRed_i_5899 < start_5896 + n_5898; SegRed_i_5899++) {
+            int64_t gtid_5867 = SegRed_i_5899;
+            int32_t eta_p_5855 = ((int32_t *) xs_mem_5870.mem)[gtid_5867];
+            int32_t eta_p_5856 = ((int32_t *) ys_mem_5871.mem)[gtid_5867];
+            int32_t defunc_0_f_res_5858 = sub32(eta_p_5855, eta_p_5856);
+            int32_t abs_res_5860 = abs32(defunc_0_f_res_5858);
             
-            // write mapped values results to memory
+            // save map-out results
             { }
-            // Apply scan op
+            // Load accum params
             {
-                int64_t uni_i_7369 = 0;
+                eta_p_5834 = local_acc_5894;
+                eta_p_5835 = local_acc_5895;
+            }
+            // Load next params
+            {
+                eta_p_5836 = abs_res_5860;
+                eta_p_5837 = gtid_5867;
+            }
+            // SegRed body
+            {
+                bool cond_5838 = slt32(eta_p_5836, eta_p_5834);
+                int32_t lifted_max_res_5839;
+                int64_t lifted_max_res_5840;
                 
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7072 = eta_p_7072;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7073 = x_7075;
-                    }
-                    // Scan op body
-                    {
-                        int32_t defunc_0_op_res_7074 = add32(eta_p_7072, eta_p_7073);
+                if (cond_5838) {
+                    lifted_max_res_5839 = eta_p_5834;
+                    lifted_max_res_5840 = eta_p_5835;
+                } else {
+                    bool cond_5841 = slt32(eta_p_5834, eta_p_5836);
+                    int32_t lifted_max_res_f_res_5842;
+                    int64_t lifted_max_res_f_res_5843;
+                    
+                    if (cond_5841) {
+                        lifted_max_res_f_res_5842 = eta_p_5836;
+                        lifted_max_res_f_res_5843 = eta_p_5837;
+                    } else {
+                        bool cond_5844 = slt64(eta_p_5837, eta_p_5835);
+                        int32_t lifted_max_res_f_res_f_res_5845;
                         
-                        ((int32_t *) mem_7351.mem)[gtid_7328] = defunc_0_op_res_7074;
-                        eta_p_7072 = defunc_0_op_res_7074;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7442 != NULL) {
-        event_7442->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7441", strdup("nothing further"), event_7442, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7444 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7351;
-    unsigned char *free_scan_stage_2_carry_mem_7375;
-};
-static int futhark_mc_scan_stage_3_parloop_7445(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7444 *futhark_mc_scan_stage_3_parloop_struct_7444 = (struct futhark_mc_scan_stage_3_parloop_struct_7444 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7444->ctx;
-    struct mc_event *event_7446 = mc_event_new(ctx);
-    
-    if (event_7446 != NULL)
-        event_7446->bef = get_wall_time();
-    
-    struct memblock mem_7351 = {.desc ="mem_7351", .mem =futhark_mc_scan_stage_3_parloop_struct_7444->free_mem_7351, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7375 = {.desc ="scan_stage_2_carry_mem_7375", .mem =futhark_mc_scan_stage_3_parloop_struct_7444->free_scan_stage_2_carry_mem_7375, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7327;
-    
-    flat_tid_7327 = subtask_id;
-    {
-        int32_t eta_p_7378;
-        int32_t eta_p_7379;
-        
-        // load carry-in
-        {
-            eta_p_7378 = ((int32_t *) scan_stage_2_carry_mem_7375.mem)[flat_tid_7327];
-        }
-        
-        int64_t start_7381;
-        int64_t end_7382;
-        
-        start_7381 = start;
-        end_7382 = end;
-        
-        int64_t n_7383 = end_7382 - start_7381;
-        
-        for (int64_t SegScan_i_7384 = start_7381; SegScan_i_7384 < start_7381 + n_7383; SegScan_i_7384++) {
-            int64_t gtid_7328 = SegScan_i_7384;
-            
-            // load partial result
-            {
-                eta_p_7379 = ((int32_t *) mem_7351.mem)[gtid_7328];
-            }
-            // combine carry with partial result
-            {
-                int32_t defunc_0_op_res_7380 = add32(eta_p_7378, eta_p_7379);
-                
-                ((int32_t *) mem_7351.mem)[gtid_7328] = defunc_0_op_res_7380;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7446 != NULL) {
-        event_7446->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7445", strdup("nothing further"), event_7446, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7438(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7437 *futhark_mc_task_7437 = (struct futhark_mc_task_7437 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7437->ctx;
-    struct mc_event *event_7448 = mc_event_new(ctx);
-    
-    if (event_7448 != NULL)
-        event_7448->bef = get_wall_time();
-    
-    int64_t dz2080U_6722 = futhark_mc_task_7437->free_dz2080U_6722;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7437->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock mem_7351 = {.desc ="mem_7351", .mem =futhark_mc_task_7437->free_mem_7351, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7375_cached_sizze_7439 = 0;
-    unsigned char *scan_stage_2_carry_mem_7375 = NULL;
-    int32_t nsubtasks_7364;
-    
-    nsubtasks_7364 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7440 futhark_mc_scan_stage_1_parloop_struct_7440_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7440_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7440_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7440_.free_mem_7351 = mem_7351.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7441_task;
-    
-    futhark_mc_scan_stage_1_parloop_7441_task.name = "futhark_mc_scan_stage_1_parloop_7441";
-    futhark_mc_scan_stage_1_parloop_7441_task.fn = futhark_mc_scan_stage_1_parloop_7441;
-    futhark_mc_scan_stage_1_parloop_7441_task.args = &futhark_mc_scan_stage_1_parloop_struct_7440_;
-    futhark_mc_scan_stage_1_parloop_7441_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7441_task.info = info;
-    
-    struct mc_event *event_7443 = mc_event_new(ctx);
-    
-    if (event_7443 != NULL)
-        event_7443->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7441_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7441_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7441_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7441_err;
-        goto cleanup;
-    }
-    if (event_7443 != NULL) {
-        event_7443->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7441_total", strdup("nothing further"), event_7443, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7364)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int32_t eta_p_7370;
-        int32_t eta_p_7371;
-        int64_t offset_7373 = (int64_t) 0;
-        int64_t offset_index_7374 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7375_cached_sizze_7439 < (int64_t) 4 * nsubtasks_7364) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7375, &scan_stage_2_carry_mem_7375_cached_sizze_7439, (int64_t) 4 * nsubtasks_7364);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int32_t *) scan_stage_2_carry_mem_7375)[(int64_t) 0] = 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7377 = 0; i_7377 < sext_i32_i64(nsubtasks_7364) - (int64_t) 1; i_7377++) {
-                offset_7373 = squot64(dz2080U_6722, sext_i32_i64(nsubtasks_7364));
-                if (slt64(i_7377, srem64(dz2080U_6722, sext_i32_i64(nsubtasks_7364)))) {
-                    offset_7373 += (int64_t) 1;
-                }
-                offset_index_7374 += offset_7373;
-                
-                int64_t gtid_7328 = offset_index_7374;
-                
-                // Read carry
-                {
-                    eta_p_7370 = ((int32_t *) scan_stage_2_carry_mem_7375)[i_7377];
-                }
-                // Read next values
-                {
-                    eta_p_7371 = ((int32_t *) mem_7351.mem)[offset_index_7374 - (int64_t) 1];
-                }
-                
-                int32_t defunc_0_op_res_7372 = add32(eta_p_7370, eta_p_7371);
-                
-                ((int32_t *) scan_stage_2_carry_mem_7375)[i_7377 + (int64_t) 1] = defunc_0_op_res_7372;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7444 futhark_mc_scan_stage_3_parloop_struct_7444_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7444_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7444_.free_mem_7351 = mem_7351.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7444_.free_scan_stage_2_carry_mem_7375 = scan_stage_2_carry_mem_7375;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7445_task;
-        
-        futhark_mc_scan_stage_3_parloop_7445_task.name = "futhark_mc_scan_stage_3_parloop_7445";
-        futhark_mc_scan_stage_3_parloop_7445_task.fn = futhark_mc_scan_stage_3_parloop_7445;
-        futhark_mc_scan_stage_3_parloop_7445_task.args = &futhark_mc_scan_stage_3_parloop_struct_7444_;
-        futhark_mc_scan_stage_3_parloop_7445_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7445_task.info = info;
-        
-        struct mc_event *event_7447 = mc_event_new(ctx);
-        
-        if (event_7447 != NULL)
-            event_7447->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7445_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7445_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7445_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7445_err;
-            goto cleanup;
-        }
-        if (event_7447 != NULL) {
-            event_7447->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7445_total", strdup("nothing further"), event_7447, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7375);
-    }
-    if (event_7448 != NULL) {
-        event_7448->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7438", strdup("nothing further"), event_7448, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7455 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6967;
-    int64_t free_zeze_rhs_7216;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7458 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6967;
-    int64_t free_zeze_rhs_7216;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-};
-static int futhark_mc_scan_stage_1_parloop_7459(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7458 *futhark_mc_scan_stage_1_parloop_struct_7458 = (struct futhark_mc_scan_stage_1_parloop_struct_7458 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7458->ctx;
-    struct mc_event *event_7460 = mc_event_new(ctx);
-    
-    if (event_7460 != NULL)
-        event_7460->bef = get_wall_time();
-    
-    int64_t dz2081U_6967 = futhark_mc_scan_stage_1_parloop_struct_7458->free_dz2081U_6967;
-    int64_t zeze_rhs_7216 = futhark_mc_scan_stage_1_parloop_struct_7458->free_zeze_rhs_7216;
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7458->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_1_parloop_struct_7458->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_scan_stage_1_parloop_struct_7458->free_mem_7354, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7341;
-    
-    flat_tid_7341 = subtask_id;
-    
-    int64_t eta_p_7229;
-    int64_t eta_p_7230;
-    
-    eta_p_7229 = (int64_t) 0;
-    {
-        int64_t start_7366;
-        int64_t end_7367;
-        
-        start_7366 = start;
-        end_7367 = end;
-        
-        int64_t n_7368 = end_7367 - start_7366;
-        
-        for (int64_t SegScan_i_7369 = start_7366; SegScan_i_7369 < start_7366 + n_7368; SegScan_i_7369++) {
-            int64_t gtid_7342 = SegScan_i_7369;
-            bool cond_7256 = gtid_7342 == zeze_rhs_7216;
-            int64_t lifted_lambda_res_7257;
-            
-            if (cond_7256) {
-                lifted_lambda_res_7257 = (int64_t) 1;
-            } else {
-                int64_t tmp_7258 = add64((int64_t) 1, gtid_7342);
-                bool x_7259 = sle64((int64_t) 0, tmp_7258);
-                bool y_7260 = slt64(tmp_7258, dz2081U_6967);
-                bool bounds_check_7261 = x_7259 && y_7260;
-                bool index_certs_7262;
-                
-                if (!bounds_check_7261) {
-                    set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_7258, "] out of bounds for array of shape [", (long long) dz2081U_6967, "].", "-> #0  segment.fut:16:13-25\n   #1  segment.fut:18:6-12\n   #2  segment.fut:108:71-84\n   #3  segment.fut:108:1-85\n"));
-                    err = FUTHARK_PROGRAM_ERROR;
-                    goto cleanup;
-                }
-                
-                bool cond_7263 = ((bool *) flags_mem_7350.mem)[tmp_7258];
-                int64_t lifted_lambda_res_f_res_7264 = btoi_bool_i64(cond_7263);
-                
-                lifted_lambda_res_7257 = lifted_lambda_res_f_res_7264;
-            }
-            // write mapped values results to memory
-            {
-                ((int64_t *) mem_7354.mem)[gtid_7342] = lifted_lambda_res_7257;
-            }
-            // Apply scan op
-            {
-                int64_t uni_i_7370 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7229 = eta_p_7229;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7230 = lifted_lambda_res_7257;
-                    }
-                    // Scan op body
-                    {
-                        int64_t defunc_0_op_res_7231 = add64(eta_p_7229, eta_p_7230);
-                        
-                        ((int64_t *) mem_7352.mem)[gtid_7342] = defunc_0_op_res_7231;
-                        eta_p_7229 = defunc_0_op_res_7231;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7460 != NULL) {
-        event_7460->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7459", strdup("nothing further"), event_7460, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7462 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7352;
-    unsigned char *free_scan_stage_2_carry_mem_7376;
-};
-static int futhark_mc_scan_stage_3_parloop_7463(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7462 *futhark_mc_scan_stage_3_parloop_struct_7462 = (struct futhark_mc_scan_stage_3_parloop_struct_7462 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7462->ctx;
-    struct mc_event *event_7464 = mc_event_new(ctx);
-    
-    if (event_7464 != NULL)
-        event_7464->bef = get_wall_time();
-    
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_3_parloop_struct_7462->free_mem_7352, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7376 = {.desc ="scan_stage_2_carry_mem_7376", .mem =futhark_mc_scan_stage_3_parloop_struct_7462->free_scan_stage_2_carry_mem_7376, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7341;
-    
-    flat_tid_7341 = subtask_id;
-    {
-        int64_t eta_p_7379;
-        int64_t eta_p_7380;
-        
-        // load carry-in
-        {
-            eta_p_7379 = ((int64_t *) scan_stage_2_carry_mem_7376.mem)[flat_tid_7341];
-        }
-        
-        int64_t start_7382;
-        int64_t end_7383;
-        
-        start_7382 = start;
-        end_7383 = end;
-        
-        int64_t n_7384 = end_7383 - start_7382;
-        
-        for (int64_t SegScan_i_7385 = start_7382; SegScan_i_7385 < start_7382 + n_7384; SegScan_i_7385++) {
-            int64_t gtid_7342 = SegScan_i_7385;
-            
-            // load partial result
-            {
-                eta_p_7380 = ((int64_t *) mem_7352.mem)[gtid_7342];
-            }
-            // combine carry with partial result
-            {
-                int64_t defunc_0_op_res_7381 = add64(eta_p_7379, eta_p_7380);
-                
-                ((int64_t *) mem_7352.mem)[gtid_7342] = defunc_0_op_res_7381;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7464 != NULL) {
-        event_7464->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7463", strdup("nothing further"), event_7464, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7456(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7455 *futhark_mc_task_7455 = (struct futhark_mc_task_7455 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7455->ctx;
-    struct mc_event *event_7466 = mc_event_new(ctx);
-    
-    if (event_7466 != NULL)
-        event_7466->bef = get_wall_time();
-    
-    int64_t dz2081U_6967 = futhark_mc_task_7455->free_dz2081U_6967;
-    int64_t zeze_rhs_7216 = futhark_mc_task_7455->free_zeze_rhs_7216;
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7455->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7455->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_task_7455->free_mem_7354, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7376_cached_sizze_7457 = 0;
-    unsigned char *scan_stage_2_carry_mem_7376 = NULL;
-    int32_t nsubtasks_7365;
-    
-    nsubtasks_7365 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7458 futhark_mc_scan_stage_1_parloop_struct_7458_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7458_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7458_.free_dz2081U_6967 = dz2081U_6967;
-    futhark_mc_scan_stage_1_parloop_struct_7458_.free_zeze_rhs_7216 = zeze_rhs_7216;
-    futhark_mc_scan_stage_1_parloop_struct_7458_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7458_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7458_.free_mem_7354 = mem_7354.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7459_task;
-    
-    futhark_mc_scan_stage_1_parloop_7459_task.name = "futhark_mc_scan_stage_1_parloop_7459";
-    futhark_mc_scan_stage_1_parloop_7459_task.fn = futhark_mc_scan_stage_1_parloop_7459;
-    futhark_mc_scan_stage_1_parloop_7459_task.args = &futhark_mc_scan_stage_1_parloop_struct_7458_;
-    futhark_mc_scan_stage_1_parloop_7459_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7459_task.info = info;
-    
-    struct mc_event *event_7461 = mc_event_new(ctx);
-    
-    if (event_7461 != NULL)
-        event_7461->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7459_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7459_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7459_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7459_err;
-        goto cleanup;
-    }
-    if (event_7461 != NULL) {
-        event_7461->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7459_total", strdup("nothing further"), event_7461, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7365)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int64_t eta_p_7371;
-        int64_t eta_p_7372;
-        int64_t offset_7374 = (int64_t) 0;
-        int64_t offset_index_7375 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7376_cached_sizze_7457 < (int64_t) 8 * nsubtasks_7365) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7376, &scan_stage_2_carry_mem_7376_cached_sizze_7457, (int64_t) 8 * nsubtasks_7365);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int64_t *) scan_stage_2_carry_mem_7376)[(int64_t) 0] = (int64_t) 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7378 = 0; i_7378 < sext_i32_i64(nsubtasks_7365) - (int64_t) 1; i_7378++) {
-                offset_7374 = squot64(dz2081U_6967, sext_i32_i64(nsubtasks_7365));
-                if (slt64(i_7378, srem64(dz2081U_6967, sext_i32_i64(nsubtasks_7365)))) {
-                    offset_7374 += (int64_t) 1;
-                }
-                offset_index_7375 += offset_7374;
-                
-                int64_t gtid_7342 = offset_index_7375;
-                
-                // Read carry
-                {
-                    eta_p_7371 = ((int64_t *) scan_stage_2_carry_mem_7376)[i_7378];
-                }
-                // Read next values
-                {
-                    eta_p_7372 = ((int64_t *) mem_7352.mem)[offset_index_7375 - (int64_t) 1];
-                }
-                
-                int64_t defunc_0_op_res_7373 = add64(eta_p_7371, eta_p_7372);
-                
-                ((int64_t *) scan_stage_2_carry_mem_7376)[i_7378 + (int64_t) 1] = defunc_0_op_res_7373;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7462 futhark_mc_scan_stage_3_parloop_struct_7462_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7462_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7462_.free_mem_7352 = mem_7352.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7462_.free_scan_stage_2_carry_mem_7376 = scan_stage_2_carry_mem_7376;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7463_task;
-        
-        futhark_mc_scan_stage_3_parloop_7463_task.name = "futhark_mc_scan_stage_3_parloop_7463";
-        futhark_mc_scan_stage_3_parloop_7463_task.fn = futhark_mc_scan_stage_3_parloop_7463;
-        futhark_mc_scan_stage_3_parloop_7463_task.args = &futhark_mc_scan_stage_3_parloop_struct_7462_;
-        futhark_mc_scan_stage_3_parloop_7463_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7463_task.info = info;
-        
-        struct mc_event *event_7465 = mc_event_new(ctx);
-        
-        if (event_7465 != NULL)
-            event_7465->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7463_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7463_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7463_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7463_err;
-            goto cleanup;
-        }
-        if (event_7465 != NULL) {
-            event_7465->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7463_total", strdup("nothing further"), event_7465, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7376);
-    }
-    if (event_7466 != NULL) {
-        event_7466->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7456", strdup("nothing further"), event_7466, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7467 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6967;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7471 {
-    struct futhark_context *ctx;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-};
-static int futhark_mc_scan_stage_1_parloop_7472(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7471 *futhark_mc_scan_stage_1_parloop_struct_7471 = (struct futhark_mc_scan_stage_1_parloop_struct_7471 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7471->ctx;
-    struct mc_event *event_7473 = mc_event_new(ctx);
-    
-    if (event_7473 != NULL)
-        event_7473->bef = get_wall_time();
-    
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_scan_stage_1_parloop_struct_7471->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7471->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_scan_stage_1_parloop_struct_7471->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_scan_stage_1_parloop_struct_7471->free_mem_7357, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7343;
-    
-    flat_tid_7343 = subtask_id;
-    
-    int32_t eta_p_7206;
-    bool eta_p_7207;
-    int32_t eta_p_7208;
-    bool eta_p_7209;
-    
-    eta_p_7206 = 0;
-    eta_p_7207 = 0;
-    {
-        int64_t start_7387;
-        int64_t end_7388;
-        
-        start_7387 = start;
-        end_7388 = end;
-        
-        int64_t n_7389 = end_7388 - start_7387;
-        
-        for (int64_t SegScan_i_7390 = start_7387; SegScan_i_7390 < start_7387 + n_7389; SegScan_i_7390++) {
-            int64_t gtid_7344 = SegScan_i_7390;
-            int32_t x_7213 = ((int32_t *) inp_mem_7349.mem)[gtid_7344];
-            bool x_7214 = ((bool *) flags_mem_7350.mem)[gtid_7344];
-            
-            // write mapped values results to memory
-            { }
-            // Apply scan op
-            {
-                int64_t uni_i_7391 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7206 = eta_p_7206;
-                        eta_p_7207 = eta_p_7207;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7208 = x_7213;
-                        eta_p_7209 = x_7214;
-                    }
-                    // Scan op body
-                    {
-                        int32_t tmp_7210;
-                        
-                        if (eta_p_7209) {
-                            tmp_7210 = eta_p_7208;
+                        if (cond_5844) {
+                            lifted_max_res_f_res_f_res_5845 = eta_p_5834;
                         } else {
-                            int32_t defunc_0_op_res_7211 = add32(eta_p_7206, eta_p_7208);
-                            
-                            tmp_7210 = defunc_0_op_res_7211;
+                            lifted_max_res_f_res_f_res_5845 = eta_p_5836;
                         }
                         
-                        bool tmp_7212 = eta_p_7207 || eta_p_7209;
+                        int64_t lifted_max_res_f_res_f_res_5846;
                         
-                        ((int32_t *) mem_7356.mem)[gtid_7344] = tmp_7210;
-                        eta_p_7206 = tmp_7210;
-                        ((bool *) mem_7357.mem)[gtid_7344] = tmp_7212;
-                        eta_p_7207 = tmp_7212;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7473 != NULL) {
-        event_7473->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7472", strdup("nothing further"), event_7473, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7475 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-    unsigned char *free_scan_stage_2_carry_mem_7401;
-    unsigned char *free_scan_stage_2_carry_mem_7403;
-};
-static int futhark_mc_scan_stage_3_parloop_7476(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7475 *futhark_mc_scan_stage_3_parloop_struct_7475 = (struct futhark_mc_scan_stage_3_parloop_struct_7475 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7475->ctx;
-    struct mc_event *event_7477 = mc_event_new(ctx);
-    
-    if (event_7477 != NULL)
-        event_7477->bef = get_wall_time();
-    
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_scan_stage_3_parloop_struct_7475->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_scan_stage_3_parloop_struct_7475->free_mem_7357, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7401 = {.desc ="scan_stage_2_carry_mem_7401", .mem =futhark_mc_scan_stage_3_parloop_struct_7475->free_scan_stage_2_carry_mem_7401, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7403 = {.desc ="scan_stage_2_carry_mem_7403", .mem =futhark_mc_scan_stage_3_parloop_struct_7475->free_scan_stage_2_carry_mem_7403, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7343;
-    
-    flat_tid_7343 = subtask_id;
-    {
-        int32_t eta_p_7406;
-        bool eta_p_7407;
-        int32_t eta_p_7408;
-        bool eta_p_7409;
-        
-        // load carry-in
-        {
-            eta_p_7406 = ((int32_t *) scan_stage_2_carry_mem_7401.mem)[flat_tid_7343];
-            eta_p_7407 = ((bool *) scan_stage_2_carry_mem_7403.mem)[flat_tid_7343];
-        }
-        
-        int64_t start_7413;
-        int64_t end_7414;
-        
-        start_7413 = start;
-        end_7414 = end;
-        
-        int64_t n_7415 = end_7414 - start_7413;
-        
-        for (int64_t SegScan_i_7416 = start_7413; SegScan_i_7416 < start_7413 + n_7415; SegScan_i_7416++) {
-            int64_t gtid_7344 = SegScan_i_7416;
-            
-            // load partial result
-            {
-                eta_p_7408 = ((int32_t *) mem_7356.mem)[gtid_7344];
-                eta_p_7409 = ((bool *) mem_7357.mem)[gtid_7344];
-            }
-            // combine carry with partial result
-            {
-                int32_t tmp_7410;
-                
-                if (eta_p_7409) {
-                    tmp_7410 = eta_p_7408;
-                } else {
-                    int32_t defunc_0_op_res_7411 = add32(eta_p_7406, eta_p_7408);
-                    
-                    tmp_7410 = defunc_0_op_res_7411;
-                }
-                
-                bool tmp_7412 = eta_p_7407 || eta_p_7409;
-                
-                ((int32_t *) mem_7356.mem)[gtid_7344] = tmp_7410;
-                ((bool *) mem_7357.mem)[gtid_7344] = tmp_7412;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7477 != NULL) {
-        event_7477->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7476", strdup("nothing further"), event_7477, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7468(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7467 *futhark_mc_task_7467 = (struct futhark_mc_task_7467 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7467->ctx;
-    struct mc_event *event_7479 = mc_event_new(ctx);
-    
-    if (event_7479 != NULL)
-        event_7479->bef = get_wall_time();
-    
-    int64_t dz2081U_6967 = futhark_mc_task_7467->free_dz2081U_6967;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7467->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7467->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_task_7467->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_task_7467->free_mem_7357, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7401_cached_sizze_7469 = 0;
-    unsigned char *scan_stage_2_carry_mem_7401 = NULL;
-    int64_t scan_stage_2_carry_mem_7403_cached_sizze_7470 = 0;
-    unsigned char *scan_stage_2_carry_mem_7403 = NULL;
-    int32_t nsubtasks_7386;
-    
-    nsubtasks_7386 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7471 futhark_mc_scan_stage_1_parloop_struct_7471_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7471_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7471_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7471_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7471_.free_mem_7356 = mem_7356.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7471_.free_mem_7357 = mem_7357.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7472_task;
-    
-    futhark_mc_scan_stage_1_parloop_7472_task.name = "futhark_mc_scan_stage_1_parloop_7472";
-    futhark_mc_scan_stage_1_parloop_7472_task.fn = futhark_mc_scan_stage_1_parloop_7472;
-    futhark_mc_scan_stage_1_parloop_7472_task.args = &futhark_mc_scan_stage_1_parloop_struct_7471_;
-    futhark_mc_scan_stage_1_parloop_7472_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7472_task.info = info;
-    
-    struct mc_event *event_7474 = mc_event_new(ctx);
-    
-    if (event_7474 != NULL)
-        event_7474->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7472_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7472_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7472_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7472_err;
-        goto cleanup;
-    }
-    if (event_7474 != NULL) {
-        event_7474->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7472_total", strdup("nothing further"), event_7474, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7386)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int32_t eta_p_7392;
-        bool eta_p_7393;
-        int32_t eta_p_7394;
-        bool eta_p_7395;
-        int64_t offset_7399 = (int64_t) 0;
-        int64_t offset_index_7400 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7401_cached_sizze_7469 < (int64_t) 4 * nsubtasks_7386) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7401, &scan_stage_2_carry_mem_7401_cached_sizze_7469, (int64_t) 4 * nsubtasks_7386);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (scan_stage_2_carry_mem_7403_cached_sizze_7470 < nsubtasks_7386) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7403, &scan_stage_2_carry_mem_7403_cached_sizze_7470, nsubtasks_7386);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int32_t *) scan_stage_2_carry_mem_7401)[(int64_t) 0] = 0;
-            ((bool *) scan_stage_2_carry_mem_7403)[(int64_t) 0] = 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7405 = 0; i_7405 < sext_i32_i64(nsubtasks_7386) - (int64_t) 1; i_7405++) {
-                offset_7399 = squot64(dz2081U_6967, sext_i32_i64(nsubtasks_7386));
-                if (slt64(i_7405, srem64(dz2081U_6967, sext_i32_i64(nsubtasks_7386)))) {
-                    offset_7399 += (int64_t) 1;
-                }
-                offset_index_7400 += offset_7399;
-                
-                int64_t gtid_7344 = offset_index_7400;
-                
-                // Read carry
-                {
-                    eta_p_7392 = ((int32_t *) scan_stage_2_carry_mem_7401)[i_7405];
-                    eta_p_7393 = ((bool *) scan_stage_2_carry_mem_7403)[i_7405];
-                }
-                // Read next values
-                {
-                    eta_p_7394 = ((int32_t *) mem_7356.mem)[offset_index_7400 - (int64_t) 1];
-                    eta_p_7395 = ((bool *) mem_7357.mem)[offset_index_7400 - (int64_t) 1];
-                }
-                
-                int32_t tmp_7396;
-                
-                if (eta_p_7395) {
-                    tmp_7396 = eta_p_7394;
-                } else {
-                    int32_t defunc_0_op_res_7397 = add32(eta_p_7392, eta_p_7394);
-                    
-                    tmp_7396 = defunc_0_op_res_7397;
-                }
-                
-                bool tmp_7398 = eta_p_7393 || eta_p_7395;
-                
-                ((int32_t *) scan_stage_2_carry_mem_7401)[i_7405 + (int64_t) 1] = tmp_7396;
-                ((bool *) scan_stage_2_carry_mem_7403)[i_7405 + (int64_t) 1] = tmp_7398;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7475 futhark_mc_scan_stage_3_parloop_struct_7475_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7475_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7475_.free_mem_7356 = mem_7356.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7475_.free_mem_7357 = mem_7357.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7475_.free_scan_stage_2_carry_mem_7401 = scan_stage_2_carry_mem_7401;
-        futhark_mc_scan_stage_3_parloop_struct_7475_.free_scan_stage_2_carry_mem_7403 = scan_stage_2_carry_mem_7403;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7476_task;
-        
-        futhark_mc_scan_stage_3_parloop_7476_task.name = "futhark_mc_scan_stage_3_parloop_7476";
-        futhark_mc_scan_stage_3_parloop_7476_task.fn = futhark_mc_scan_stage_3_parloop_7476;
-        futhark_mc_scan_stage_3_parloop_7476_task.args = &futhark_mc_scan_stage_3_parloop_struct_7475_;
-        futhark_mc_scan_stage_3_parloop_7476_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7476_task.info = info;
-        
-        struct mc_event *event_7478 = mc_event_new(ctx);
-        
-        if (event_7478 != NULL)
-            event_7478->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7476_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7476_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7476_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7476_err;
-            goto cleanup;
-        }
-        if (event_7478 != NULL) {
-            event_7478->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7476_total", strdup("nothing further"), event_7478, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7401);
-        free(scan_stage_2_carry_mem_7403);
-    }
-    if (event_7479 != NULL) {
-        event_7479->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7468", strdup("nothing further"), event_7479, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7480 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6967;
-    int64_t free_last_res_7237;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7359;
-};
-struct futhark_mc_segmap_parloop_struct_7482 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6967;
-    int64_t free_last_res_7237;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7359;
-};
-static int futhark_mc_segmap_parloop_7483(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_segmap_parloop_struct_7482 *futhark_mc_segmap_parloop_struct_7482 = (struct futhark_mc_segmap_parloop_struct_7482 *) args;
-    struct futhark_context *ctx = futhark_mc_segmap_parloop_struct_7482->ctx;
-    struct mc_event *event_7484 = mc_event_new(ctx);
-    
-    if (event_7484 != NULL)
-        event_7484->bef = get_wall_time();
-    
-    int64_t dz2081U_6967 = futhark_mc_segmap_parloop_struct_7482->free_dz2081U_6967;
-    int64_t last_res_7237 = futhark_mc_segmap_parloop_struct_7482->free_last_res_7237;
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_segmap_parloop_struct_7482->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_segmap_parloop_struct_7482->free_mem_7354, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_segmap_parloop_struct_7482->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7359 = {.desc ="mem_7359", .mem =futhark_mc_segmap_parloop_struct_7482->free_mem_7359, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7345;
-    
-    flat_tid_7345 = subtask_id;
-    {
-        int64_t start_7421;
-        int64_t end_7422;
-        
-        start_7421 = start;
-        end_7422 = end;
-        
-        int64_t n_7423 = end_7422 - start_7421;
-        
-        for (int64_t SegMap_i_7424 = start_7421; SegMap_i_7424 < start_7421 + n_7423; SegMap_i_7424++) {
-            int64_t slice_7425 = dz2081U_6967;
-            int64_t gtid_7346 = SegMap_i_7424;
-            int64_t remnant_7426 = SegMap_i_7424 - gtid_7346;
-            int64_t eta_p_7290 = ((int64_t *) mem_7354.mem)[gtid_7346];
-            int32_t write_value_7291 = ((int32_t *) mem_7356.mem)[gtid_7346];
-            bool cond_7292 = eta_p_7290 == (int64_t) 1;
-            int64_t lifted_lambda_res_7293;
-            
-            if (cond_7292) {
-                int64_t eta_p_7419 = ((int64_t *) mem_7352.mem)[gtid_7346];
-                int64_t lifted_lambda_res_t_res_7420 = sub64(eta_p_7419, (int64_t) 1);
-                
-                lifted_lambda_res_7293 = lifted_lambda_res_t_res_7420;
-            } else {
-                lifted_lambda_res_7293 = (int64_t) -1;
-            }
-            if (sle64((int64_t) 0, lifted_lambda_res_7293) && slt64(lifted_lambda_res_7293, last_res_7237)) {
-                ((int32_t *) mem_7359.mem)[lifted_lambda_res_7293] = write_value_7291;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7484 != NULL) {
-        event_7484->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_parloop_7483", strdup("nothing further"), event_7484, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segmap_task_7481(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7480 *futhark_mc_task_7480 = (struct futhark_mc_task_7480 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7480->ctx;
-    struct mc_event *event_7486 = mc_event_new(ctx);
-    
-    if (event_7486 != NULL)
-        event_7486->bef = get_wall_time();
-    
-    int64_t dz2081U_6967 = futhark_mc_task_7480->free_dz2081U_6967;
-    int64_t last_res_7237 = futhark_mc_task_7480->free_last_res_7237;
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7480->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_task_7480->free_mem_7354, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_task_7480->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7359 = {.desc ="mem_7359", .mem =futhark_mc_task_7480->free_mem_7359, .size =0, .references =NULL};
-    int32_t nsubtasks_7418;
-    
-    nsubtasks_7418 = info.nsubtasks;
-    
-    struct futhark_mc_segmap_parloop_struct_7482 futhark_mc_segmap_parloop_struct_7482_;
-    
-    futhark_mc_segmap_parloop_struct_7482_.ctx = ctx;
-    futhark_mc_segmap_parloop_struct_7482_.free_dz2081U_6967 = dz2081U_6967;
-    futhark_mc_segmap_parloop_struct_7482_.free_last_res_7237 = last_res_7237;
-    futhark_mc_segmap_parloop_struct_7482_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_segmap_parloop_struct_7482_.free_mem_7354 = mem_7354.mem;
-    futhark_mc_segmap_parloop_struct_7482_.free_mem_7356 = mem_7356.mem;
-    futhark_mc_segmap_parloop_struct_7482_.free_mem_7359 = mem_7359.mem;
-    
-    struct scheduler_parloop futhark_mc_segmap_parloop_7483_task;
-    
-    futhark_mc_segmap_parloop_7483_task.name = "futhark_mc_segmap_parloop_7483";
-    futhark_mc_segmap_parloop_7483_task.fn = futhark_mc_segmap_parloop_7483;
-    futhark_mc_segmap_parloop_7483_task.args = &futhark_mc_segmap_parloop_struct_7482_;
-    futhark_mc_segmap_parloop_7483_task.iterations = iterations;
-    futhark_mc_segmap_parloop_7483_task.info = info;
-    
-    struct mc_event *event_7485 = mc_event_new(ctx);
-    
-    if (event_7485 != NULL)
-        event_7485->bef = get_wall_time();
-    
-    int futhark_mc_segmap_parloop_7483_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_segmap_parloop_7483_task);
-    
-    if (futhark_mc_segmap_parloop_7483_err != 0) {
-        err = futhark_mc_segmap_parloop_7483_err;
-        goto cleanup;
-    }
-    if (event_7485 != NULL) {
-        event_7485->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_parloop_7483_total", strdup("nothing further"), event_7485, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    
-  cleanup:
-    { }
-    if (event_7486 != NULL) {
-        event_7486->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_task_7481", strdup("nothing further"), event_7486, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7489 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6693;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7493 {
-    struct futhark_context *ctx;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-};
-static int futhark_mc_scan_stage_1_parloop_7494(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7493 *futhark_mc_scan_stage_1_parloop_struct_7493 = (struct futhark_mc_scan_stage_1_parloop_struct_7493 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7493->ctx;
-    struct mc_event *event_7495 = mc_event_new(ctx);
-    
-    if (event_7495 != NULL)
-        event_7495->bef = get_wall_time();
-    
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_scan_stage_1_parloop_struct_7493->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7493->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_1_parloop_struct_7493->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_scan_stage_1_parloop_struct_7493->free_mem_7353, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7333;
-    
-    flat_tid_7333 = subtask_id;
-    
-    int32_t eta_p_7135;
-    bool eta_p_7136;
-    int32_t eta_p_7137;
-    bool eta_p_7138;
-    
-    eta_p_7135 = 0;
-    eta_p_7136 = 0;
-    {
-        int64_t start_7365;
-        int64_t end_7366;
-        
-        start_7365 = start;
-        end_7366 = end;
-        
-        int64_t n_7367 = end_7366 - start_7365;
-        
-        for (int64_t SegScan_i_7368 = start_7365; SegScan_i_7368 < start_7365 + n_7367; SegScan_i_7368++) {
-            int64_t gtid_7334 = SegScan_i_7368;
-            int32_t x_7142 = ((int32_t *) inp_mem_7349.mem)[gtid_7334];
-            bool x_7143 = ((bool *) flags_mem_7350.mem)[gtid_7334];
-            
-            // write mapped values results to memory
-            { }
-            // Apply scan op
-            {
-                int64_t uni_i_7369 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7135 = eta_p_7135;
-                        eta_p_7136 = eta_p_7136;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7137 = x_7142;
-                        eta_p_7138 = x_7143;
-                    }
-                    // Scan op body
-                    {
-                        int32_t tmp_7139;
-                        
-                        if (eta_p_7138) {
-                            tmp_7139 = eta_p_7137;
+                        if (cond_5844) {
+                            lifted_max_res_f_res_f_res_5846 = eta_p_5835;
                         } else {
-                            int32_t defunc_0_op_res_7140 = add32(eta_p_7135, eta_p_7137);
-                            
-                            tmp_7139 = defunc_0_op_res_7140;
+                            lifted_max_res_f_res_f_res_5846 = eta_p_5837;
+                        }
+                        lifted_max_res_f_res_5842 = lifted_max_res_f_res_f_res_5845;
+                        lifted_max_res_f_res_5843 = lifted_max_res_f_res_f_res_5846;
+                    }
+                    lifted_max_res_5839 = lifted_max_res_f_res_5842;
+                    lifted_max_res_5840 = lifted_max_res_f_res_5843;
+                }
+                local_acc_5894 = lifted_max_res_5839;
+                local_acc_5895 = lifted_max_res_5840;
+            }
+        }
+        
+        int64_t uni_i_5900 = 0;
+        
+        {
+            int64_t gtid_5867 = uni_i_5900;
+            
+            // Load accum params
+            {
+                eta_p_5879 = local_acc_5892;
+                eta_p_5880 = local_acc_5893;
+            }
+            // Load next params
+            {
+                eta_p_5881 = local_acc_5894;
+                eta_p_5882 = local_acc_5895;
+            }
+            // SegRed body
+            {
+                bool cond_5883 = slt32(eta_p_5881, eta_p_5879);
+                int32_t lifted_max_res_5884;
+                int64_t lifted_max_res_5885;
+                
+                if (cond_5883) {
+                    lifted_max_res_5884 = eta_p_5879;
+                    lifted_max_res_5885 = eta_p_5880;
+                } else {
+                    bool cond_5886 = slt32(eta_p_5879, eta_p_5881);
+                    int32_t lifted_max_res_f_res_5887;
+                    int64_t lifted_max_res_f_res_5888;
+                    
+                    if (cond_5886) {
+                        lifted_max_res_f_res_5887 = eta_p_5881;
+                        lifted_max_res_f_res_5888 = eta_p_5882;
+                    } else {
+                        bool cond_5889 = slt64(eta_p_5882, eta_p_5880);
+                        int32_t lifted_max_res_f_res_f_res_5890;
+                        
+                        if (cond_5889) {
+                            lifted_max_res_f_res_f_res_5890 = eta_p_5879;
+                        } else {
+                            lifted_max_res_f_res_f_res_5890 = eta_p_5881;
                         }
                         
-                        bool tmp_7141 = eta_p_7136 || eta_p_7138;
+                        int64_t lifted_max_res_f_res_f_res_5891;
                         
-                        ((int32_t *) mem_7352.mem)[gtid_7334] = tmp_7139;
-                        eta_p_7135 = tmp_7139;
-                        ((bool *) mem_7353.mem)[gtid_7334] = tmp_7141;
-                        eta_p_7136 = tmp_7141;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7495 != NULL) {
-        event_7495->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7494", strdup("nothing further"), event_7495, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7497 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-    unsigned char *free_scan_stage_2_carry_mem_7379;
-    unsigned char *free_scan_stage_2_carry_mem_7381;
-};
-static int futhark_mc_scan_stage_3_parloop_7498(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7497 *futhark_mc_scan_stage_3_parloop_struct_7497 = (struct futhark_mc_scan_stage_3_parloop_struct_7497 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7497->ctx;
-    struct mc_event *event_7499 = mc_event_new(ctx);
-    
-    if (event_7499 != NULL)
-        event_7499->bef = get_wall_time();
-    
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_3_parloop_struct_7497->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_scan_stage_3_parloop_struct_7497->free_mem_7353, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7379 = {.desc ="scan_stage_2_carry_mem_7379", .mem =futhark_mc_scan_stage_3_parloop_struct_7497->free_scan_stage_2_carry_mem_7379, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7381 = {.desc ="scan_stage_2_carry_mem_7381", .mem =futhark_mc_scan_stage_3_parloop_struct_7497->free_scan_stage_2_carry_mem_7381, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7333;
-    
-    flat_tid_7333 = subtask_id;
-    {
-        int32_t eta_p_7384;
-        bool eta_p_7385;
-        int32_t eta_p_7386;
-        bool eta_p_7387;
-        
-        // load carry-in
-        {
-            eta_p_7384 = ((int32_t *) scan_stage_2_carry_mem_7379.mem)[flat_tid_7333];
-            eta_p_7385 = ((bool *) scan_stage_2_carry_mem_7381.mem)[flat_tid_7333];
-        }
-        
-        int64_t start_7391;
-        int64_t end_7392;
-        
-        start_7391 = start;
-        end_7392 = end;
-        
-        int64_t n_7393 = end_7392 - start_7391;
-        
-        for (int64_t SegScan_i_7394 = start_7391; SegScan_i_7394 < start_7391 + n_7393; SegScan_i_7394++) {
-            int64_t gtid_7334 = SegScan_i_7394;
-            
-            // load partial result
-            {
-                eta_p_7386 = ((int32_t *) mem_7352.mem)[gtid_7334];
-                eta_p_7387 = ((bool *) mem_7353.mem)[gtid_7334];
-            }
-            // combine carry with partial result
-            {
-                int32_t tmp_7388;
-                
-                if (eta_p_7387) {
-                    tmp_7388 = eta_p_7386;
-                } else {
-                    int32_t defunc_0_op_res_7389 = add32(eta_p_7384, eta_p_7386);
-                    
-                    tmp_7388 = defunc_0_op_res_7389;
-                }
-                
-                bool tmp_7390 = eta_p_7385 || eta_p_7387;
-                
-                ((int32_t *) mem_7352.mem)[gtid_7334] = tmp_7388;
-                ((bool *) mem_7353.mem)[gtid_7334] = tmp_7390;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7499 != NULL) {
-        event_7499->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7498", strdup("nothing further"), event_7499, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7490(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7489 *futhark_mc_task_7489 = (struct futhark_mc_task_7489 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7489->ctx;
-    struct mc_event *event_7501 = mc_event_new(ctx);
-    
-    if (event_7501 != NULL)
-        event_7501->bef = get_wall_time();
-    
-    int64_t dz2081U_6693 = futhark_mc_task_7489->free_dz2081U_6693;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7489->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7489->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7489->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_task_7489->free_mem_7353, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7379_cached_sizze_7491 = 0;
-    unsigned char *scan_stage_2_carry_mem_7379 = NULL;
-    int64_t scan_stage_2_carry_mem_7381_cached_sizze_7492 = 0;
-    unsigned char *scan_stage_2_carry_mem_7381 = NULL;
-    int32_t nsubtasks_7364;
-    
-    nsubtasks_7364 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7493 futhark_mc_scan_stage_1_parloop_struct_7493_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7493_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7493_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7493_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7493_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7493_.free_mem_7353 = mem_7353.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7494_task;
-    
-    futhark_mc_scan_stage_1_parloop_7494_task.name = "futhark_mc_scan_stage_1_parloop_7494";
-    futhark_mc_scan_stage_1_parloop_7494_task.fn = futhark_mc_scan_stage_1_parloop_7494;
-    futhark_mc_scan_stage_1_parloop_7494_task.args = &futhark_mc_scan_stage_1_parloop_struct_7493_;
-    futhark_mc_scan_stage_1_parloop_7494_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7494_task.info = info;
-    
-    struct mc_event *event_7496 = mc_event_new(ctx);
-    
-    if (event_7496 != NULL)
-        event_7496->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7494_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7494_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7494_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7494_err;
-        goto cleanup;
-    }
-    if (event_7496 != NULL) {
-        event_7496->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7494_total", strdup("nothing further"), event_7496, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7364)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int32_t eta_p_7370;
-        bool eta_p_7371;
-        int32_t eta_p_7372;
-        bool eta_p_7373;
-        int64_t offset_7377 = (int64_t) 0;
-        int64_t offset_index_7378 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7379_cached_sizze_7491 < (int64_t) 4 * nsubtasks_7364) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7379, &scan_stage_2_carry_mem_7379_cached_sizze_7491, (int64_t) 4 * nsubtasks_7364);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (scan_stage_2_carry_mem_7381_cached_sizze_7492 < nsubtasks_7364) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7381, &scan_stage_2_carry_mem_7381_cached_sizze_7492, nsubtasks_7364);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int32_t *) scan_stage_2_carry_mem_7379)[(int64_t) 0] = 0;
-            ((bool *) scan_stage_2_carry_mem_7381)[(int64_t) 0] = 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7383 = 0; i_7383 < sext_i32_i64(nsubtasks_7364) - (int64_t) 1; i_7383++) {
-                offset_7377 = squot64(dz2081U_6693, sext_i32_i64(nsubtasks_7364));
-                if (slt64(i_7383, srem64(dz2081U_6693, sext_i32_i64(nsubtasks_7364)))) {
-                    offset_7377 += (int64_t) 1;
-                }
-                offset_index_7378 += offset_7377;
-                
-                int64_t gtid_7334 = offset_index_7378;
-                
-                // Read carry
-                {
-                    eta_p_7370 = ((int32_t *) scan_stage_2_carry_mem_7379)[i_7383];
-                    eta_p_7371 = ((bool *) scan_stage_2_carry_mem_7381)[i_7383];
-                }
-                // Read next values
-                {
-                    eta_p_7372 = ((int32_t *) mem_7352.mem)[offset_index_7378 - (int64_t) 1];
-                    eta_p_7373 = ((bool *) mem_7353.mem)[offset_index_7378 - (int64_t) 1];
-                }
-                
-                int32_t tmp_7374;
-                
-                if (eta_p_7373) {
-                    tmp_7374 = eta_p_7372;
-                } else {
-                    int32_t defunc_0_op_res_7375 = add32(eta_p_7370, eta_p_7372);
-                    
-                    tmp_7374 = defunc_0_op_res_7375;
-                }
-                
-                bool tmp_7376 = eta_p_7371 || eta_p_7373;
-                
-                ((int32_t *) scan_stage_2_carry_mem_7379)[i_7383 + (int64_t) 1] = tmp_7374;
-                ((bool *) scan_stage_2_carry_mem_7381)[i_7383 + (int64_t) 1] = tmp_7376;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7497 futhark_mc_scan_stage_3_parloop_struct_7497_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7497_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7497_.free_mem_7352 = mem_7352.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7497_.free_mem_7353 = mem_7353.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7497_.free_scan_stage_2_carry_mem_7379 = scan_stage_2_carry_mem_7379;
-        futhark_mc_scan_stage_3_parloop_struct_7497_.free_scan_stage_2_carry_mem_7381 = scan_stage_2_carry_mem_7381;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7498_task;
-        
-        futhark_mc_scan_stage_3_parloop_7498_task.name = "futhark_mc_scan_stage_3_parloop_7498";
-        futhark_mc_scan_stage_3_parloop_7498_task.fn = futhark_mc_scan_stage_3_parloop_7498;
-        futhark_mc_scan_stage_3_parloop_7498_task.args = &futhark_mc_scan_stage_3_parloop_struct_7497_;
-        futhark_mc_scan_stage_3_parloop_7498_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7498_task.info = info;
-        
-        struct mc_event *event_7500 = mc_event_new(ctx);
-        
-        if (event_7500 != NULL)
-            event_7500->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7498_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7498_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7498_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7498_err;
-            goto cleanup;
-        }
-        if (event_7500 != NULL) {
-            event_7500->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7498_total", strdup("nothing further"), event_7500, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7379);
-        free(scan_stage_2_carry_mem_7381);
-    }
-    if (event_7501 != NULL) {
-        event_7501->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7490", strdup("nothing further"), event_7501, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7508 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6583;
-    int64_t free_zeze_rhs_7217;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7511 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6583;
-    int64_t free_zeze_rhs_7217;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-};
-static int futhark_mc_scan_stage_1_parloop_7512(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7511 *futhark_mc_scan_stage_1_parloop_struct_7511 = (struct futhark_mc_scan_stage_1_parloop_struct_7511 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7511->ctx;
-    struct mc_event *event_7513 = mc_event_new(ctx);
-    
-    if (event_7513 != NULL)
-        event_7513->bef = get_wall_time();
-    
-    int64_t dz2081U_6583 = futhark_mc_scan_stage_1_parloop_struct_7511->free_dz2081U_6583;
-    int64_t zeze_rhs_7217 = futhark_mc_scan_stage_1_parloop_struct_7511->free_zeze_rhs_7217;
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7511->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_1_parloop_struct_7511->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_scan_stage_1_parloop_struct_7511->free_mem_7354, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7335;
-    
-    flat_tid_7335 = subtask_id;
-    
-    int64_t eta_p_7230;
-    int64_t eta_p_7231;
-    
-    eta_p_7230 = (int64_t) 0;
-    {
-        int64_t start_7366;
-        int64_t end_7367;
-        
-        start_7366 = start;
-        end_7367 = end;
-        
-        int64_t n_7368 = end_7367 - start_7366;
-        
-        for (int64_t SegScan_i_7369 = start_7366; SegScan_i_7369 < start_7366 + n_7368; SegScan_i_7369++) {
-            int64_t gtid_7336 = SegScan_i_7369;
-            bool cond_7256 = gtid_7336 == zeze_rhs_7217;
-            int64_t lifted_lambda_res_7257;
-            
-            if (cond_7256) {
-                lifted_lambda_res_7257 = (int64_t) 1;
-            } else {
-                int64_t tmp_7258 = add64((int64_t) 1, gtid_7336);
-                bool x_7259 = sle64((int64_t) 0, tmp_7258);
-                bool y_7260 = slt64(tmp_7258, dz2081U_6583);
-                bool bounds_check_7261 = x_7259 && y_7260;
-                bool index_certs_7262;
-                
-                if (!bounds_check_7261) {
-                    set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_7258, "] out of bounds for array of shape [", (long long) dz2081U_6583, "].", "-> #0  segment.fut:16:13-25\n   #1  segment.fut:18:6-12\n   #2  segment.fut:72:82-95\n   #3  segment.fut:72:1-96\n"));
-                    err = FUTHARK_PROGRAM_ERROR;
-                    goto cleanup;
-                }
-                
-                bool cond_7263 = ((bool *) flags_mem_7350.mem)[tmp_7258];
-                int64_t lifted_lambda_res_f_res_7264 = btoi_bool_i64(cond_7263);
-                
-                lifted_lambda_res_7257 = lifted_lambda_res_f_res_7264;
-            }
-            // write mapped values results to memory
-            {
-                ((int64_t *) mem_7354.mem)[gtid_7336] = lifted_lambda_res_7257;
-            }
-            // Apply scan op
-            {
-                int64_t uni_i_7370 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7230 = eta_p_7230;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7231 = lifted_lambda_res_7257;
-                    }
-                    // Scan op body
-                    {
-                        int64_t defunc_0_op_res_7232 = add64(eta_p_7230, eta_p_7231);
-                        
-                        ((int64_t *) mem_7352.mem)[gtid_7336] = defunc_0_op_res_7232;
-                        eta_p_7230 = defunc_0_op_res_7232;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7513 != NULL) {
-        event_7513->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7512", strdup("nothing further"), event_7513, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7515 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7352;
-    unsigned char *free_scan_stage_2_carry_mem_7376;
-};
-static int futhark_mc_scan_stage_3_parloop_7516(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7515 *futhark_mc_scan_stage_3_parloop_struct_7515 = (struct futhark_mc_scan_stage_3_parloop_struct_7515 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7515->ctx;
-    struct mc_event *event_7517 = mc_event_new(ctx);
-    
-    if (event_7517 != NULL)
-        event_7517->bef = get_wall_time();
-    
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_3_parloop_struct_7515->free_mem_7352, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7376 = {.desc ="scan_stage_2_carry_mem_7376", .mem =futhark_mc_scan_stage_3_parloop_struct_7515->free_scan_stage_2_carry_mem_7376, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7335;
-    
-    flat_tid_7335 = subtask_id;
-    {
-        int64_t eta_p_7379;
-        int64_t eta_p_7380;
-        
-        // load carry-in
-        {
-            eta_p_7379 = ((int64_t *) scan_stage_2_carry_mem_7376.mem)[flat_tid_7335];
-        }
-        
-        int64_t start_7382;
-        int64_t end_7383;
-        
-        start_7382 = start;
-        end_7383 = end;
-        
-        int64_t n_7384 = end_7383 - start_7382;
-        
-        for (int64_t SegScan_i_7385 = start_7382; SegScan_i_7385 < start_7382 + n_7384; SegScan_i_7385++) {
-            int64_t gtid_7336 = SegScan_i_7385;
-            
-            // load partial result
-            {
-                eta_p_7380 = ((int64_t *) mem_7352.mem)[gtid_7336];
-            }
-            // combine carry with partial result
-            {
-                int64_t defunc_0_op_res_7381 = add64(eta_p_7379, eta_p_7380);
-                
-                ((int64_t *) mem_7352.mem)[gtid_7336] = defunc_0_op_res_7381;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7517 != NULL) {
-        event_7517->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7516", strdup("nothing further"), event_7517, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7509(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7508 *futhark_mc_task_7508 = (struct futhark_mc_task_7508 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7508->ctx;
-    struct mc_event *event_7519 = mc_event_new(ctx);
-    
-    if (event_7519 != NULL)
-        event_7519->bef = get_wall_time();
-    
-    int64_t dz2081U_6583 = futhark_mc_task_7508->free_dz2081U_6583;
-    int64_t zeze_rhs_7217 = futhark_mc_task_7508->free_zeze_rhs_7217;
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7508->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7508->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_task_7508->free_mem_7354, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7376_cached_sizze_7510 = 0;
-    unsigned char *scan_stage_2_carry_mem_7376 = NULL;
-    int32_t nsubtasks_7365;
-    
-    nsubtasks_7365 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7511 futhark_mc_scan_stage_1_parloop_struct_7511_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7511_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7511_.free_dz2081U_6583 = dz2081U_6583;
-    futhark_mc_scan_stage_1_parloop_struct_7511_.free_zeze_rhs_7217 = zeze_rhs_7217;
-    futhark_mc_scan_stage_1_parloop_struct_7511_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7511_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7511_.free_mem_7354 = mem_7354.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7512_task;
-    
-    futhark_mc_scan_stage_1_parloop_7512_task.name = "futhark_mc_scan_stage_1_parloop_7512";
-    futhark_mc_scan_stage_1_parloop_7512_task.fn = futhark_mc_scan_stage_1_parloop_7512;
-    futhark_mc_scan_stage_1_parloop_7512_task.args = &futhark_mc_scan_stage_1_parloop_struct_7511_;
-    futhark_mc_scan_stage_1_parloop_7512_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7512_task.info = info;
-    
-    struct mc_event *event_7514 = mc_event_new(ctx);
-    
-    if (event_7514 != NULL)
-        event_7514->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7512_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7512_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7512_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7512_err;
-        goto cleanup;
-    }
-    if (event_7514 != NULL) {
-        event_7514->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7512_total", strdup("nothing further"), event_7514, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7365)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int64_t eta_p_7371;
-        int64_t eta_p_7372;
-        int64_t offset_7374 = (int64_t) 0;
-        int64_t offset_index_7375 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7376_cached_sizze_7510 < (int64_t) 8 * nsubtasks_7365) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7376, &scan_stage_2_carry_mem_7376_cached_sizze_7510, (int64_t) 8 * nsubtasks_7365);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int64_t *) scan_stage_2_carry_mem_7376)[(int64_t) 0] = (int64_t) 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7378 = 0; i_7378 < sext_i32_i64(nsubtasks_7365) - (int64_t) 1; i_7378++) {
-                offset_7374 = squot64(dz2081U_6583, sext_i32_i64(nsubtasks_7365));
-                if (slt64(i_7378, srem64(dz2081U_6583, sext_i32_i64(nsubtasks_7365)))) {
-                    offset_7374 += (int64_t) 1;
-                }
-                offset_index_7375 += offset_7374;
-                
-                int64_t gtid_7336 = offset_index_7375;
-                
-                // Read carry
-                {
-                    eta_p_7371 = ((int64_t *) scan_stage_2_carry_mem_7376)[i_7378];
-                }
-                // Read next values
-                {
-                    eta_p_7372 = ((int64_t *) mem_7352.mem)[offset_index_7375 - (int64_t) 1];
-                }
-                
-                int64_t defunc_0_op_res_7373 = add64(eta_p_7371, eta_p_7372);
-                
-                ((int64_t *) scan_stage_2_carry_mem_7376)[i_7378 + (int64_t) 1] = defunc_0_op_res_7373;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7515 futhark_mc_scan_stage_3_parloop_struct_7515_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7515_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7515_.free_mem_7352 = mem_7352.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7515_.free_scan_stage_2_carry_mem_7376 = scan_stage_2_carry_mem_7376;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7516_task;
-        
-        futhark_mc_scan_stage_3_parloop_7516_task.name = "futhark_mc_scan_stage_3_parloop_7516";
-        futhark_mc_scan_stage_3_parloop_7516_task.fn = futhark_mc_scan_stage_3_parloop_7516;
-        futhark_mc_scan_stage_3_parloop_7516_task.args = &futhark_mc_scan_stage_3_parloop_struct_7515_;
-        futhark_mc_scan_stage_3_parloop_7516_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7516_task.info = info;
-        
-        struct mc_event *event_7518 = mc_event_new(ctx);
-        
-        if (event_7518 != NULL)
-            event_7518->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7516_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7516_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7516_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7516_err;
-            goto cleanup;
-        }
-        if (event_7518 != NULL) {
-            event_7518->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7516_total", strdup("nothing further"), event_7518, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7376);
-    }
-    if (event_7519 != NULL) {
-        event_7519->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7509", strdup("nothing further"), event_7519, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7520 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6583;
-    int32_t free_ne_6586;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7524 {
-    struct futhark_context *ctx;
-    int32_t free_ne_6586;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-};
-static int futhark_mc_scan_stage_1_parloop_7525(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7524 *futhark_mc_scan_stage_1_parloop_struct_7524 = (struct futhark_mc_scan_stage_1_parloop_struct_7524 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7524->ctx;
-    struct mc_event *event_7526 = mc_event_new(ctx);
-    
-    if (event_7526 != NULL)
-        event_7526->bef = get_wall_time();
-    
-    int32_t ne_6586 = futhark_mc_scan_stage_1_parloop_struct_7524->free_ne_6586;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_scan_stage_1_parloop_struct_7524->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7524->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_scan_stage_1_parloop_struct_7524->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_scan_stage_1_parloop_struct_7524->free_mem_7357, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7337;
-    
-    flat_tid_7337 = subtask_id;
-    
-    int32_t eta_p_7207;
-    bool eta_p_7208;
-    int32_t eta_p_7209;
-    bool eta_p_7210;
-    
-    eta_p_7207 = ne_6586;
-    eta_p_7208 = 0;
-    {
-        int64_t start_7387;
-        int64_t end_7388;
-        
-        start_7387 = start;
-        end_7388 = end;
-        
-        int64_t n_7389 = end_7388 - start_7387;
-        
-        for (int64_t SegScan_i_7390 = start_7387; SegScan_i_7390 < start_7387 + n_7389; SegScan_i_7390++) {
-            int64_t gtid_7338 = SegScan_i_7390;
-            int32_t x_7214 = ((int32_t *) inp_mem_7349.mem)[gtid_7338];
-            bool x_7215 = ((bool *) flags_mem_7350.mem)[gtid_7338];
-            
-            // write mapped values results to memory
-            { }
-            // Apply scan op
-            {
-                int64_t uni_i_7391 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7207 = eta_p_7207;
-                        eta_p_7208 = eta_p_7208;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7209 = x_7214;
-                        eta_p_7210 = x_7215;
-                    }
-                    // Scan op body
-                    {
-                        int32_t tmp_7211;
-                        
-                        if (eta_p_7210) {
-                            tmp_7211 = eta_p_7209;
+                        if (cond_5889) {
+                            lifted_max_res_f_res_f_res_5891 = eta_p_5880;
                         } else {
-                            int32_t defunc_0_op_res_7212 = add32(eta_p_7207, eta_p_7209);
-                            
-                            tmp_7211 = defunc_0_op_res_7212;
+                            lifted_max_res_f_res_f_res_5891 = eta_p_5882;
+                        }
+                        lifted_max_res_f_res_5887 = lifted_max_res_f_res_f_res_5890;
+                        lifted_max_res_f_res_5888 = lifted_max_res_f_res_f_res_5891;
+                    }
+                    lifted_max_res_5884 = lifted_max_res_f_res_5887;
+                    lifted_max_res_5885 = lifted_max_res_f_res_5888;
+                }
+                local_acc_5892 = lifted_max_res_5884;
+                local_acc_5893 = lifted_max_res_5885;
+            }
+        }
+        ((int32_t *) reduce_stage_1_tid_res_arr_mem_5875.mem)[flat_tid_5866] = local_acc_5892;
+        ((int64_t *) reduce_stage_1_tid_res_arr_mem_5877.mem)[flat_tid_5866] = local_acc_5893;
+    }
+    
+  cleanup:
+    { }
+    if (event_5932 != NULL) {
+        event_5932->aft = get_wall_time();
+        lock_lock(&ctx->event_list_lock);
+        add_event(ctx, "futhark_mc_segred_stage_1_parloop_5931", strdup("nothing further"), event_5932, (event_report_fn) mc_event_report);
+        lock_unlock(&ctx->event_list_lock);
+    }
+    return err;
+}
+int futhark_mc_segred_task_5927(void *args, int64_t iterations, int tid, struct scheduler_info info)
+{
+    int err = 0;
+    int subtask_id = tid;
+    struct futhark_mc_task_5926 *futhark_mc_task_5926 = (struct futhark_mc_task_5926 *) args;
+    struct futhark_context *ctx = futhark_mc_task_5926->ctx;
+    struct mc_event *event_5934 = mc_event_new(ctx);
+    
+    if (event_5934 != NULL)
+        event_5934->bef = get_wall_time();
+    
+    int64_t flat_tid_5866 = futhark_mc_task_5926->free_flat_tid_5866;
+    struct memblock xs_mem_5870 = {.desc ="xs_mem_5870", .mem =futhark_mc_task_5926->free_xs_mem_5870, .size =0, .references =NULL};
+    struct memblock ys_mem_5871 = {.desc ="ys_mem_5871", .mem =futhark_mc_task_5926->free_ys_mem_5871, .size =0, .references =NULL};
+    int32_t defunc_0_reduce_comm_res_5862 = *futhark_mc_task_5926->retval_defunc_0_reduce_comm_res_5862;
+    int64_t defunc_0_reduce_comm_res_5863 = *futhark_mc_task_5926->retval_defunc_0_reduce_comm_res_5863;
+    int64_t reduce_stage_1_tid_res_arr_mem_5875_cached_sizze_5928 = 0;
+    unsigned char *reduce_stage_1_tid_res_arr_mem_5875 = NULL;
+    int64_t reduce_stage_1_tid_res_arr_mem_5877_cached_sizze_5929 = 0;
+    unsigned char *reduce_stage_1_tid_res_arr_mem_5877 = NULL;
+    int32_t nsubtasks_5874;
+    
+    nsubtasks_5874 = info.nsubtasks;
+    if (reduce_stage_1_tid_res_arr_mem_5875_cached_sizze_5928 < (int64_t) 4 * nsubtasks_5874) {
+        err = lexical_realloc(ctx, &reduce_stage_1_tid_res_arr_mem_5875, &reduce_stage_1_tid_res_arr_mem_5875_cached_sizze_5928, (int64_t) 4 * nsubtasks_5874);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    if (reduce_stage_1_tid_res_arr_mem_5877_cached_sizze_5929 < (int64_t) 8 * nsubtasks_5874) {
+        err = lexical_realloc(ctx, &reduce_stage_1_tid_res_arr_mem_5877, &reduce_stage_1_tid_res_arr_mem_5877_cached_sizze_5929, (int64_t) 8 * nsubtasks_5874);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    
+    struct futhark_mc_segred_stage_1_parloop_struct_5930 futhark_mc_segred_stage_1_parloop_struct_5930_;
+    
+    futhark_mc_segred_stage_1_parloop_struct_5930_.ctx = ctx;
+    futhark_mc_segred_stage_1_parloop_struct_5930_.free_xs_mem_5870 = xs_mem_5870.mem;
+    futhark_mc_segred_stage_1_parloop_struct_5930_.free_ys_mem_5871 = ys_mem_5871.mem;
+    futhark_mc_segred_stage_1_parloop_struct_5930_.free_reduce_stage_1_tid_res_arr_mem_5875 = reduce_stage_1_tid_res_arr_mem_5875;
+    futhark_mc_segred_stage_1_parloop_struct_5930_.free_reduce_stage_1_tid_res_arr_mem_5877 = reduce_stage_1_tid_res_arr_mem_5877;
+    
+    struct scheduler_parloop futhark_mc_segred_stage_1_parloop_5931_task;
+    
+    futhark_mc_segred_stage_1_parloop_5931_task.name = "futhark_mc_segred_stage_1_parloop_5931";
+    futhark_mc_segred_stage_1_parloop_5931_task.fn = futhark_mc_segred_stage_1_parloop_5931;
+    futhark_mc_segred_stage_1_parloop_5931_task.args = &futhark_mc_segred_stage_1_parloop_struct_5930_;
+    futhark_mc_segred_stage_1_parloop_5931_task.iterations = iterations;
+    futhark_mc_segred_stage_1_parloop_5931_task.info = info;
+    
+    struct mc_event *event_5933 = mc_event_new(ctx);
+    
+    if (event_5933 != NULL)
+        event_5933->bef = get_wall_time();
+    
+    int futhark_mc_segred_stage_1_parloop_5931_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_segred_stage_1_parloop_5931_task);
+    
+    if (futhark_mc_segred_stage_1_parloop_5931_err != 0) {
+        err = futhark_mc_segred_stage_1_parloop_5931_err;
+        goto cleanup;
+    }
+    if (event_5933 != NULL) {
+        event_5933->aft = get_wall_time();
+        lock_lock(&ctx->event_list_lock);
+        add_event(ctx, "futhark_mc_segred_stage_1_parloop_5931_total", strdup("nothing further"), event_5933, (event_report_fn) mc_event_report);
+        lock_unlock(&ctx->event_list_lock);
+    }
+    // neutral-initialise the output
+    {
+        defunc_0_reduce_comm_res_5862 = 0;
+        defunc_0_reduce_comm_res_5863 = (int64_t) -1;
+    }
+    
+    int32_t eta_p_5901;
+    int64_t eta_p_5902;
+    int32_t eta_p_5903;
+    int64_t eta_p_5904;
+    
+    for (int32_t i_5914 = 0; i_5914 < nsubtasks_5874; i_5914++) {
+        flat_tid_5866 = i_5914;
+        // Apply main thread reduction
+        {
+            // load acc params
+            {
+                eta_p_5901 = defunc_0_reduce_comm_res_5862;
+                eta_p_5902 = defunc_0_reduce_comm_res_5863;
+            }
+            // load next params
+            {
+                eta_p_5903 = ((int32_t *) reduce_stage_1_tid_res_arr_mem_5875)[flat_tid_5866];
+                eta_p_5904 = ((int64_t *) reduce_stage_1_tid_res_arr_mem_5877)[flat_tid_5866];
+            }
+            // red body
+            {
+                bool cond_5905 = slt32(eta_p_5903, eta_p_5901);
+                int32_t lifted_max_res_5906;
+                int64_t lifted_max_res_5907;
+                
+                if (cond_5905) {
+                    lifted_max_res_5906 = eta_p_5901;
+                    lifted_max_res_5907 = eta_p_5902;
+                } else {
+                    bool cond_5908 = slt32(eta_p_5901, eta_p_5903);
+                    int32_t lifted_max_res_f_res_5909;
+                    int64_t lifted_max_res_f_res_5910;
+                    
+                    if (cond_5908) {
+                        lifted_max_res_f_res_5909 = eta_p_5903;
+                        lifted_max_res_f_res_5910 = eta_p_5904;
+                    } else {
+                        bool cond_5911 = slt64(eta_p_5904, eta_p_5902);
+                        int32_t lifted_max_res_f_res_f_res_5912;
+                        
+                        if (cond_5911) {
+                            lifted_max_res_f_res_f_res_5912 = eta_p_5901;
+                        } else {
+                            lifted_max_res_f_res_f_res_5912 = eta_p_5903;
                         }
                         
-                        bool tmp_7213 = eta_p_7208 || eta_p_7210;
+                        int64_t lifted_max_res_f_res_f_res_5913;
                         
-                        ((int32_t *) mem_7356.mem)[gtid_7338] = tmp_7211;
-                        eta_p_7207 = tmp_7211;
-                        ((bool *) mem_7357.mem)[gtid_7338] = tmp_7213;
-                        eta_p_7208 = tmp_7213;
-                    }
-                }
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7526 != NULL) {
-        event_7526->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7525", strdup("nothing further"), event_7526, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7528 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7357;
-    unsigned char *free_scan_stage_2_carry_mem_7401;
-    unsigned char *free_scan_stage_2_carry_mem_7403;
-};
-static int futhark_mc_scan_stage_3_parloop_7529(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7528 *futhark_mc_scan_stage_3_parloop_struct_7528 = (struct futhark_mc_scan_stage_3_parloop_struct_7528 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7528->ctx;
-    struct mc_event *event_7530 = mc_event_new(ctx);
-    
-    if (event_7530 != NULL)
-        event_7530->bef = get_wall_time();
-    
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_scan_stage_3_parloop_struct_7528->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_scan_stage_3_parloop_struct_7528->free_mem_7357, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7401 = {.desc ="scan_stage_2_carry_mem_7401", .mem =futhark_mc_scan_stage_3_parloop_struct_7528->free_scan_stage_2_carry_mem_7401, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7403 = {.desc ="scan_stage_2_carry_mem_7403", .mem =futhark_mc_scan_stage_3_parloop_struct_7528->free_scan_stage_2_carry_mem_7403, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7337;
-    
-    flat_tid_7337 = subtask_id;
-    {
-        int32_t eta_p_7406;
-        bool eta_p_7407;
-        int32_t eta_p_7408;
-        bool eta_p_7409;
-        
-        // load carry-in
-        {
-            eta_p_7406 = ((int32_t *) scan_stage_2_carry_mem_7401.mem)[flat_tid_7337];
-            eta_p_7407 = ((bool *) scan_stage_2_carry_mem_7403.mem)[flat_tid_7337];
-        }
-        
-        int64_t start_7413;
-        int64_t end_7414;
-        
-        start_7413 = start;
-        end_7414 = end;
-        
-        int64_t n_7415 = end_7414 - start_7413;
-        
-        for (int64_t SegScan_i_7416 = start_7413; SegScan_i_7416 < start_7413 + n_7415; SegScan_i_7416++) {
-            int64_t gtid_7338 = SegScan_i_7416;
-            
-            // load partial result
-            {
-                eta_p_7408 = ((int32_t *) mem_7356.mem)[gtid_7338];
-                eta_p_7409 = ((bool *) mem_7357.mem)[gtid_7338];
-            }
-            // combine carry with partial result
-            {
-                int32_t tmp_7410;
-                
-                if (eta_p_7409) {
-                    tmp_7410 = eta_p_7408;
-                } else {
-                    int32_t defunc_0_op_res_7411 = add32(eta_p_7406, eta_p_7408);
-                    
-                    tmp_7410 = defunc_0_op_res_7411;
-                }
-                
-                bool tmp_7412 = eta_p_7407 || eta_p_7409;
-                
-                ((int32_t *) mem_7356.mem)[gtid_7338] = tmp_7410;
-                ((bool *) mem_7357.mem)[gtid_7338] = tmp_7412;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7530 != NULL) {
-        event_7530->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7529", strdup("nothing further"), event_7530, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7521(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7520 *futhark_mc_task_7520 = (struct futhark_mc_task_7520 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7520->ctx;
-    struct mc_event *event_7532 = mc_event_new(ctx);
-    
-    if (event_7532 != NULL)
-        event_7532->bef = get_wall_time();
-    
-    int64_t dz2081U_6583 = futhark_mc_task_7520->free_dz2081U_6583;
-    int32_t ne_6586 = futhark_mc_task_7520->free_ne_6586;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7520->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7520->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_task_7520->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7357 = {.desc ="mem_7357", .mem =futhark_mc_task_7520->free_mem_7357, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7401_cached_sizze_7522 = 0;
-    unsigned char *scan_stage_2_carry_mem_7401 = NULL;
-    int64_t scan_stage_2_carry_mem_7403_cached_sizze_7523 = 0;
-    unsigned char *scan_stage_2_carry_mem_7403 = NULL;
-    int32_t nsubtasks_7386;
-    
-    nsubtasks_7386 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7524 futhark_mc_scan_stage_1_parloop_struct_7524_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7524_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7524_.free_ne_6586 = ne_6586;
-    futhark_mc_scan_stage_1_parloop_struct_7524_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7524_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7524_.free_mem_7356 = mem_7356.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7524_.free_mem_7357 = mem_7357.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7525_task;
-    
-    futhark_mc_scan_stage_1_parloop_7525_task.name = "futhark_mc_scan_stage_1_parloop_7525";
-    futhark_mc_scan_stage_1_parloop_7525_task.fn = futhark_mc_scan_stage_1_parloop_7525;
-    futhark_mc_scan_stage_1_parloop_7525_task.args = &futhark_mc_scan_stage_1_parloop_struct_7524_;
-    futhark_mc_scan_stage_1_parloop_7525_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7525_task.info = info;
-    
-    struct mc_event *event_7527 = mc_event_new(ctx);
-    
-    if (event_7527 != NULL)
-        event_7527->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7525_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7525_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7525_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7525_err;
-        goto cleanup;
-    }
-    if (event_7527 != NULL) {
-        event_7527->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7525_total", strdup("nothing further"), event_7527, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7386)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int32_t eta_p_7392;
-        bool eta_p_7393;
-        int32_t eta_p_7394;
-        bool eta_p_7395;
-        int64_t offset_7399 = (int64_t) 0;
-        int64_t offset_index_7400 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7401_cached_sizze_7522 < (int64_t) 4 * nsubtasks_7386) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7401, &scan_stage_2_carry_mem_7401_cached_sizze_7522, (int64_t) 4 * nsubtasks_7386);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (scan_stage_2_carry_mem_7403_cached_sizze_7523 < nsubtasks_7386) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7403, &scan_stage_2_carry_mem_7403_cached_sizze_7523, nsubtasks_7386);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int32_t *) scan_stage_2_carry_mem_7401)[(int64_t) 0] = ne_6586;
-            ((bool *) scan_stage_2_carry_mem_7403)[(int64_t) 0] = 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7405 = 0; i_7405 < sext_i32_i64(nsubtasks_7386) - (int64_t) 1; i_7405++) {
-                offset_7399 = squot64(dz2081U_6583, sext_i32_i64(nsubtasks_7386));
-                if (slt64(i_7405, srem64(dz2081U_6583, sext_i32_i64(nsubtasks_7386)))) {
-                    offset_7399 += (int64_t) 1;
-                }
-                offset_index_7400 += offset_7399;
-                
-                int64_t gtid_7338 = offset_index_7400;
-                
-                // Read carry
-                {
-                    eta_p_7392 = ((int32_t *) scan_stage_2_carry_mem_7401)[i_7405];
-                    eta_p_7393 = ((bool *) scan_stage_2_carry_mem_7403)[i_7405];
-                }
-                // Read next values
-                {
-                    eta_p_7394 = ((int32_t *) mem_7356.mem)[offset_index_7400 - (int64_t) 1];
-                    eta_p_7395 = ((bool *) mem_7357.mem)[offset_index_7400 - (int64_t) 1];
-                }
-                
-                int32_t tmp_7396;
-                
-                if (eta_p_7395) {
-                    tmp_7396 = eta_p_7394;
-                } else {
-                    int32_t defunc_0_op_res_7397 = add32(eta_p_7392, eta_p_7394);
-                    
-                    tmp_7396 = defunc_0_op_res_7397;
-                }
-                
-                bool tmp_7398 = eta_p_7393 || eta_p_7395;
-                
-                ((int32_t *) scan_stage_2_carry_mem_7401)[i_7405 + (int64_t) 1] = tmp_7396;
-                ((bool *) scan_stage_2_carry_mem_7403)[i_7405 + (int64_t) 1] = tmp_7398;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7528 futhark_mc_scan_stage_3_parloop_struct_7528_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7528_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7528_.free_mem_7356 = mem_7356.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7528_.free_mem_7357 = mem_7357.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7528_.free_scan_stage_2_carry_mem_7401 = scan_stage_2_carry_mem_7401;
-        futhark_mc_scan_stage_3_parloop_struct_7528_.free_scan_stage_2_carry_mem_7403 = scan_stage_2_carry_mem_7403;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7529_task;
-        
-        futhark_mc_scan_stage_3_parloop_7529_task.name = "futhark_mc_scan_stage_3_parloop_7529";
-        futhark_mc_scan_stage_3_parloop_7529_task.fn = futhark_mc_scan_stage_3_parloop_7529;
-        futhark_mc_scan_stage_3_parloop_7529_task.args = &futhark_mc_scan_stage_3_parloop_struct_7528_;
-        futhark_mc_scan_stage_3_parloop_7529_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7529_task.info = info;
-        
-        struct mc_event *event_7531 = mc_event_new(ctx);
-        
-        if (event_7531 != NULL)
-            event_7531->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7529_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7529_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7529_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7529_err;
-            goto cleanup;
-        }
-        if (event_7531 != NULL) {
-            event_7531->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7529_total", strdup("nothing further"), event_7531, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
-        }
-    }
-    
-  cleanup:
-    {
-        free(scan_stage_2_carry_mem_7401);
-        free(scan_stage_2_carry_mem_7403);
-    }
-    if (event_7532 != NULL) {
-        event_7532->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7521", strdup("nothing further"), event_7532, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7533 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6583;
-    int64_t free_last_res_7238;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7359;
-};
-struct futhark_mc_segmap_parloop_struct_7535 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6583;
-    int64_t free_last_res_7238;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7354;
-    unsigned char *free_mem_7356;
-    unsigned char *free_mem_7359;
-};
-static int futhark_mc_segmap_parloop_7536(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_segmap_parloop_struct_7535 *futhark_mc_segmap_parloop_struct_7535 = (struct futhark_mc_segmap_parloop_struct_7535 *) args;
-    struct futhark_context *ctx = futhark_mc_segmap_parloop_struct_7535->ctx;
-    struct mc_event *event_7537 = mc_event_new(ctx);
-    
-    if (event_7537 != NULL)
-        event_7537->bef = get_wall_time();
-    
-    int64_t dz2081U_6583 = futhark_mc_segmap_parloop_struct_7535->free_dz2081U_6583;
-    int64_t last_res_7238 = futhark_mc_segmap_parloop_struct_7535->free_last_res_7238;
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_segmap_parloop_struct_7535->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_segmap_parloop_struct_7535->free_mem_7354, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_segmap_parloop_struct_7535->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7359 = {.desc ="mem_7359", .mem =futhark_mc_segmap_parloop_struct_7535->free_mem_7359, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7339;
-    
-    flat_tid_7339 = subtask_id;
-    {
-        int64_t start_7421;
-        int64_t end_7422;
-        
-        start_7421 = start;
-        end_7422 = end;
-        
-        int64_t n_7423 = end_7422 - start_7421;
-        
-        for (int64_t SegMap_i_7424 = start_7421; SegMap_i_7424 < start_7421 + n_7423; SegMap_i_7424++) {
-            int64_t slice_7425 = dz2081U_6583;
-            int64_t gtid_7340 = SegMap_i_7424;
-            int64_t remnant_7426 = SegMap_i_7424 - gtid_7340;
-            int64_t eta_p_7290 = ((int64_t *) mem_7354.mem)[gtid_7340];
-            int32_t write_value_7291 = ((int32_t *) mem_7356.mem)[gtid_7340];
-            bool cond_7292 = eta_p_7290 == (int64_t) 1;
-            int64_t lifted_lambda_res_7293;
-            
-            if (cond_7292) {
-                int64_t eta_p_7419 = ((int64_t *) mem_7352.mem)[gtid_7340];
-                int64_t lifted_lambda_res_t_res_7420 = sub64(eta_p_7419, (int64_t) 1);
-                
-                lifted_lambda_res_7293 = lifted_lambda_res_t_res_7420;
-            } else {
-                lifted_lambda_res_7293 = (int64_t) -1;
-            }
-            if (sle64((int64_t) 0, lifted_lambda_res_7293) && slt64(lifted_lambda_res_7293, last_res_7238)) {
-                ((int32_t *) mem_7359.mem)[lifted_lambda_res_7293] = write_value_7291;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7537 != NULL) {
-        event_7537->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_parloop_7536", strdup("nothing further"), event_7537, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segmap_task_7534(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7533 *futhark_mc_task_7533 = (struct futhark_mc_task_7533 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7533->ctx;
-    struct mc_event *event_7539 = mc_event_new(ctx);
-    
-    if (event_7539 != NULL)
-        event_7539->bef = get_wall_time();
-    
-    int64_t dz2081U_6583 = futhark_mc_task_7533->free_dz2081U_6583;
-    int64_t last_res_7238 = futhark_mc_task_7533->free_last_res_7238;
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7533->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7354 = {.desc ="mem_7354", .mem =futhark_mc_task_7533->free_mem_7354, .size =0, .references =NULL};
-    struct memblock mem_7356 = {.desc ="mem_7356", .mem =futhark_mc_task_7533->free_mem_7356, .size =0, .references =NULL};
-    struct memblock mem_7359 = {.desc ="mem_7359", .mem =futhark_mc_task_7533->free_mem_7359, .size =0, .references =NULL};
-    int32_t nsubtasks_7418;
-    
-    nsubtasks_7418 = info.nsubtasks;
-    
-    struct futhark_mc_segmap_parloop_struct_7535 futhark_mc_segmap_parloop_struct_7535_;
-    
-    futhark_mc_segmap_parloop_struct_7535_.ctx = ctx;
-    futhark_mc_segmap_parloop_struct_7535_.free_dz2081U_6583 = dz2081U_6583;
-    futhark_mc_segmap_parloop_struct_7535_.free_last_res_7238 = last_res_7238;
-    futhark_mc_segmap_parloop_struct_7535_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_segmap_parloop_struct_7535_.free_mem_7354 = mem_7354.mem;
-    futhark_mc_segmap_parloop_struct_7535_.free_mem_7356 = mem_7356.mem;
-    futhark_mc_segmap_parloop_struct_7535_.free_mem_7359 = mem_7359.mem;
-    
-    struct scheduler_parloop futhark_mc_segmap_parloop_7536_task;
-    
-    futhark_mc_segmap_parloop_7536_task.name = "futhark_mc_segmap_parloop_7536";
-    futhark_mc_segmap_parloop_7536_task.fn = futhark_mc_segmap_parloop_7536;
-    futhark_mc_segmap_parloop_7536_task.args = &futhark_mc_segmap_parloop_struct_7535_;
-    futhark_mc_segmap_parloop_7536_task.iterations = iterations;
-    futhark_mc_segmap_parloop_7536_task.info = info;
-    
-    struct mc_event *event_7538 = mc_event_new(ctx);
-    
-    if (event_7538 != NULL)
-        event_7538->bef = get_wall_time();
-    
-    int futhark_mc_segmap_parloop_7536_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_segmap_parloop_7536_task);
-    
-    if (futhark_mc_segmap_parloop_7536_err != 0) {
-        err = futhark_mc_segmap_parloop_7536_err;
-        goto cleanup;
-    }
-    if (event_7538 != NULL) {
-        event_7538->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_parloop_7536_total", strdup("nothing further"), event_7538, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    
-  cleanup:
-    { }
-    if (event_7539 != NULL) {
-        event_7539->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segmap_task_7534", strdup("nothing further"), event_7539, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (err == 0) { }
-    return err;
-}
-struct futhark_mc_task_7542 {
-    struct futhark_context *ctx;
-    int64_t free_dz2081U_6241;
-    int32_t free_ne_6244;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-};
-struct futhark_mc_scan_stage_1_parloop_struct_7546 {
-    struct futhark_context *ctx;
-    int32_t free_ne_6244;
-    unsigned char *free_inp_mem_7349;
-    unsigned char *free_flags_mem_7350;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-};
-static int futhark_mc_scan_stage_1_parloop_7547(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_1_parloop_struct_7546 *futhark_mc_scan_stage_1_parloop_struct_7546 = (struct futhark_mc_scan_stage_1_parloop_struct_7546 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_1_parloop_struct_7546->ctx;
-    struct mc_event *event_7548 = mc_event_new(ctx);
-    
-    if (event_7548 != NULL)
-        event_7548->bef = get_wall_time();
-    
-    int32_t ne_6244 = futhark_mc_scan_stage_1_parloop_struct_7546->free_ne_6244;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_scan_stage_1_parloop_struct_7546->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_scan_stage_1_parloop_struct_7546->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_1_parloop_struct_7546->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_scan_stage_1_parloop_struct_7546->free_mem_7353, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7331;
-    
-    flat_tid_7331 = subtask_id;
-    
-    int32_t eta_p_7136;
-    bool eta_p_7137;
-    int32_t eta_p_7138;
-    bool eta_p_7139;
-    
-    eta_p_7136 = ne_6244;
-    eta_p_7137 = 0;
-    {
-        int64_t start_7365;
-        int64_t end_7366;
-        
-        start_7365 = start;
-        end_7366 = end;
-        
-        int64_t n_7367 = end_7366 - start_7365;
-        
-        for (int64_t SegScan_i_7368 = start_7365; SegScan_i_7368 < start_7365 + n_7367; SegScan_i_7368++) {
-            int64_t gtid_7332 = SegScan_i_7368;
-            int32_t x_7143 = ((int32_t *) inp_mem_7349.mem)[gtid_7332];
-            bool x_7144 = ((bool *) flags_mem_7350.mem)[gtid_7332];
-            
-            // write mapped values results to memory
-            { }
-            // Apply scan op
-            {
-                int64_t uni_i_7369 = 0;
-                
-                {
-                    // Read accumulator
-                    {
-                        eta_p_7136 = eta_p_7136;
-                        eta_p_7137 = eta_p_7137;
-                    }
-                    // Read next values
-                    {
-                        eta_p_7138 = x_7143;
-                        eta_p_7139 = x_7144;
-                    }
-                    // Scan op body
-                    {
-                        int32_t tmp_7140;
-                        
-                        if (eta_p_7139) {
-                            tmp_7140 = eta_p_7138;
+                        if (cond_5911) {
+                            lifted_max_res_f_res_f_res_5913 = eta_p_5902;
                         } else {
-                            int32_t defunc_0_op_res_7141 = add32(eta_p_7136, eta_p_7138);
-                            
-                            tmp_7140 = defunc_0_op_res_7141;
+                            lifted_max_res_f_res_f_res_5913 = eta_p_5904;
                         }
-                        
-                        bool tmp_7142 = eta_p_7137 || eta_p_7139;
-                        
-                        ((int32_t *) mem_7352.mem)[gtid_7332] = tmp_7140;
-                        eta_p_7136 = tmp_7140;
-                        ((bool *) mem_7353.mem)[gtid_7332] = tmp_7142;
-                        eta_p_7137 = tmp_7142;
+                        lifted_max_res_f_res_5909 = lifted_max_res_f_res_f_res_5912;
+                        lifted_max_res_f_res_5910 = lifted_max_res_f_res_f_res_5913;
                     }
+                    lifted_max_res_5906 = lifted_max_res_f_res_5909;
+                    lifted_max_res_5907 = lifted_max_res_f_res_5910;
                 }
+                defunc_0_reduce_comm_res_5862 = lifted_max_res_5906;
+                defunc_0_reduce_comm_res_5863 = lifted_max_res_5907;
             }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7548 != NULL) {
-        event_7548->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7547", strdup("nothing further"), event_7548, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-struct futhark_mc_scan_stage_3_parloop_struct_7550 {
-    struct futhark_context *ctx;
-    unsigned char *free_mem_7352;
-    unsigned char *free_mem_7353;
-    unsigned char *free_scan_stage_2_carry_mem_7379;
-    unsigned char *free_scan_stage_2_carry_mem_7381;
-};
-static int futhark_mc_scan_stage_3_parloop_7551(void *args, int64_t start, int64_t end, int subtask_id, int tid)
-{
-    (void) subtask_id;
-    (void) tid;
-    
-    int err = 0;
-    struct futhark_mc_scan_stage_3_parloop_struct_7550 *futhark_mc_scan_stage_3_parloop_struct_7550 = (struct futhark_mc_scan_stage_3_parloop_struct_7550 *) args;
-    struct futhark_context *ctx = futhark_mc_scan_stage_3_parloop_struct_7550->ctx;
-    struct mc_event *event_7552 = mc_event_new(ctx);
-    
-    if (event_7552 != NULL)
-        event_7552->bef = get_wall_time();
-    
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_scan_stage_3_parloop_struct_7550->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_scan_stage_3_parloop_struct_7550->free_mem_7353, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7379 = {.desc ="scan_stage_2_carry_mem_7379", .mem =futhark_mc_scan_stage_3_parloop_struct_7550->free_scan_stage_2_carry_mem_7379, .size =0, .references =NULL};
-    struct memblock scan_stage_2_carry_mem_7381 = {.desc ="scan_stage_2_carry_mem_7381", .mem =futhark_mc_scan_stage_3_parloop_struct_7550->free_scan_stage_2_carry_mem_7381, .size =0, .references =NULL};
-    int64_t iterations = end - start;
-    int64_t flat_tid_7331;
-    
-    flat_tid_7331 = subtask_id;
-    {
-        int32_t eta_p_7384;
-        bool eta_p_7385;
-        int32_t eta_p_7386;
-        bool eta_p_7387;
-        
-        // load carry-in
-        {
-            eta_p_7384 = ((int32_t *) scan_stage_2_carry_mem_7379.mem)[flat_tid_7331];
-            eta_p_7385 = ((bool *) scan_stage_2_carry_mem_7381.mem)[flat_tid_7331];
-        }
-        
-        int64_t start_7391;
-        int64_t end_7392;
-        
-        start_7391 = start;
-        end_7392 = end;
-        
-        int64_t n_7393 = end_7392 - start_7391;
-        
-        for (int64_t SegScan_i_7394 = start_7391; SegScan_i_7394 < start_7391 + n_7393; SegScan_i_7394++) {
-            int64_t gtid_7332 = SegScan_i_7394;
-            
-            // load partial result
-            {
-                eta_p_7386 = ((int32_t *) mem_7352.mem)[gtid_7332];
-                eta_p_7387 = ((bool *) mem_7353.mem)[gtid_7332];
-            }
-            // combine carry with partial result
-            {
-                int32_t tmp_7388;
-                
-                if (eta_p_7387) {
-                    tmp_7388 = eta_p_7386;
-                } else {
-                    int32_t defunc_0_op_res_7389 = add32(eta_p_7384, eta_p_7386);
-                    
-                    tmp_7388 = defunc_0_op_res_7389;
-                }
-                
-                bool tmp_7390 = eta_p_7385 || eta_p_7387;
-                
-                ((int32_t *) mem_7352.mem)[gtid_7332] = tmp_7388;
-                ((bool *) mem_7353.mem)[gtid_7332] = tmp_7390;
-            }
-        }
-    }
-    
-  cleanup:
-    { }
-    if (event_7552 != NULL) {
-        event_7552->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_3_parloop_7551", strdup("nothing further"), event_7552, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    return err;
-}
-int futhark_mc_segscan_task_7543(void *args, int64_t iterations, int tid, struct scheduler_info info)
-{
-    int err = 0;
-    int subtask_id = tid;
-    struct futhark_mc_task_7542 *futhark_mc_task_7542 = (struct futhark_mc_task_7542 *) args;
-    struct futhark_context *ctx = futhark_mc_task_7542->ctx;
-    struct mc_event *event_7554 = mc_event_new(ctx);
-    
-    if (event_7554 != NULL)
-        event_7554->bef = get_wall_time();
-    
-    int64_t dz2081U_6241 = futhark_mc_task_7542->free_dz2081U_6241;
-    int32_t ne_6244 = futhark_mc_task_7542->free_ne_6244;
-    struct memblock inp_mem_7349 = {.desc ="inp_mem_7349", .mem =futhark_mc_task_7542->free_inp_mem_7349, .size =0, .references =NULL};
-    struct memblock flags_mem_7350 = {.desc ="flags_mem_7350", .mem =futhark_mc_task_7542->free_flags_mem_7350, .size =0, .references =NULL};
-    struct memblock mem_7352 = {.desc ="mem_7352", .mem =futhark_mc_task_7542->free_mem_7352, .size =0, .references =NULL};
-    struct memblock mem_7353 = {.desc ="mem_7353", .mem =futhark_mc_task_7542->free_mem_7353, .size =0, .references =NULL};
-    int64_t scan_stage_2_carry_mem_7379_cached_sizze_7544 = 0;
-    unsigned char *scan_stage_2_carry_mem_7379 = NULL;
-    int64_t scan_stage_2_carry_mem_7381_cached_sizze_7545 = 0;
-    unsigned char *scan_stage_2_carry_mem_7381 = NULL;
-    int32_t nsubtasks_7364;
-    
-    nsubtasks_7364 = info.nsubtasks;
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "nonsegmented segScan");
-    if (ctx->debugging)
-        fprintf(ctx->log, "%s\n", "Scan stage 1");
-    
-    struct futhark_mc_scan_stage_1_parloop_struct_7546 futhark_mc_scan_stage_1_parloop_struct_7546_;
-    
-    futhark_mc_scan_stage_1_parloop_struct_7546_.ctx = ctx;
-    futhark_mc_scan_stage_1_parloop_struct_7546_.free_ne_6244 = ne_6244;
-    futhark_mc_scan_stage_1_parloop_struct_7546_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7546_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7546_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_scan_stage_1_parloop_struct_7546_.free_mem_7353 = mem_7353.mem;
-    
-    struct scheduler_parloop futhark_mc_scan_stage_1_parloop_7547_task;
-    
-    futhark_mc_scan_stage_1_parloop_7547_task.name = "futhark_mc_scan_stage_1_parloop_7547";
-    futhark_mc_scan_stage_1_parloop_7547_task.fn = futhark_mc_scan_stage_1_parloop_7547;
-    futhark_mc_scan_stage_1_parloop_7547_task.args = &futhark_mc_scan_stage_1_parloop_struct_7546_;
-    futhark_mc_scan_stage_1_parloop_7547_task.iterations = iterations;
-    futhark_mc_scan_stage_1_parloop_7547_task.info = info;
-    
-    struct mc_event *event_7549 = mc_event_new(ctx);
-    
-    if (event_7549 != NULL)
-        event_7549->bef = get_wall_time();
-    
-    int futhark_mc_scan_stage_1_parloop_7547_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_1_parloop_7547_task);
-    
-    if (futhark_mc_scan_stage_1_parloop_7547_err != 0) {
-        err = futhark_mc_scan_stage_1_parloop_7547_err;
-        goto cleanup;
-    }
-    if (event_7549 != NULL) {
-        event_7549->aft = get_wall_time();
-        lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_scan_stage_1_parloop_7547_total", strdup("nothing further"), event_7549, (event_report_fn) mc_event_report);
-        lock_unlock(&ctx->event_list_lock);
-    }
-    if (slt32(1, nsubtasks_7364)) {
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 2");
-        
-        int32_t eta_p_7370;
-        bool eta_p_7371;
-        int32_t eta_p_7372;
-        bool eta_p_7373;
-        int64_t offset_7377 = (int64_t) 0;
-        int64_t offset_index_7378 = (int64_t) 0;
-        
-        if (scan_stage_2_carry_mem_7379_cached_sizze_7544 < (int64_t) 4 * nsubtasks_7364) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7379, &scan_stage_2_carry_mem_7379_cached_sizze_7544, (int64_t) 4 * nsubtasks_7364);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (scan_stage_2_carry_mem_7381_cached_sizze_7545 < nsubtasks_7364) {
-            err = lexical_realloc(ctx, &scan_stage_2_carry_mem_7381, &scan_stage_2_carry_mem_7381_cached_sizze_7545, nsubtasks_7364);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        // carry-in for first chunk is neutral
-        {
-            ((int32_t *) scan_stage_2_carry_mem_7379)[(int64_t) 0] = ne_6244;
-            ((bool *) scan_stage_2_carry_mem_7381)[(int64_t) 0] = 0;
-        }
-        // scan carries
-        {
-            for (int64_t i_7383 = 0; i_7383 < sext_i32_i64(nsubtasks_7364) - (int64_t) 1; i_7383++) {
-                offset_7377 = squot64(dz2081U_6241, sext_i32_i64(nsubtasks_7364));
-                if (slt64(i_7383, srem64(dz2081U_6241, sext_i32_i64(nsubtasks_7364)))) {
-                    offset_7377 += (int64_t) 1;
-                }
-                offset_index_7378 += offset_7377;
-                
-                int64_t gtid_7332 = offset_index_7378;
-                
-                // Read carry
-                {
-                    eta_p_7370 = ((int32_t *) scan_stage_2_carry_mem_7379)[i_7383];
-                    eta_p_7371 = ((bool *) scan_stage_2_carry_mem_7381)[i_7383];
-                }
-                // Read next values
-                {
-                    eta_p_7372 = ((int32_t *) mem_7352.mem)[offset_index_7378 - (int64_t) 1];
-                    eta_p_7373 = ((bool *) mem_7353.mem)[offset_index_7378 - (int64_t) 1];
-                }
-                
-                int32_t tmp_7374;
-                
-                if (eta_p_7373) {
-                    tmp_7374 = eta_p_7372;
-                } else {
-                    int32_t defunc_0_op_res_7375 = add32(eta_p_7370, eta_p_7372);
-                    
-                    tmp_7374 = defunc_0_op_res_7375;
-                }
-                
-                bool tmp_7376 = eta_p_7371 || eta_p_7373;
-                
-                ((int32_t *) scan_stage_2_carry_mem_7379)[i_7383 + (int64_t) 1] = tmp_7374;
-                ((bool *) scan_stage_2_carry_mem_7381)[i_7383 + (int64_t) 1] = tmp_7376;
-            }
-        }
-        if (ctx->debugging)
-            fprintf(ctx->log, "%s\n", "Scan stage 3");
-        
-        struct futhark_mc_scan_stage_3_parloop_struct_7550 futhark_mc_scan_stage_3_parloop_struct_7550_;
-        
-        futhark_mc_scan_stage_3_parloop_struct_7550_.ctx = ctx;
-        futhark_mc_scan_stage_3_parloop_struct_7550_.free_mem_7352 = mem_7352.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7550_.free_mem_7353 = mem_7353.mem;
-        futhark_mc_scan_stage_3_parloop_struct_7550_.free_scan_stage_2_carry_mem_7379 = scan_stage_2_carry_mem_7379;
-        futhark_mc_scan_stage_3_parloop_struct_7550_.free_scan_stage_2_carry_mem_7381 = scan_stage_2_carry_mem_7381;
-        
-        struct scheduler_parloop futhark_mc_scan_stage_3_parloop_7551_task;
-        
-        futhark_mc_scan_stage_3_parloop_7551_task.name = "futhark_mc_scan_stage_3_parloop_7551";
-        futhark_mc_scan_stage_3_parloop_7551_task.fn = futhark_mc_scan_stage_3_parloop_7551;
-        futhark_mc_scan_stage_3_parloop_7551_task.args = &futhark_mc_scan_stage_3_parloop_struct_7550_;
-        futhark_mc_scan_stage_3_parloop_7551_task.iterations = iterations;
-        futhark_mc_scan_stage_3_parloop_7551_task.info = info;
-        
-        struct mc_event *event_7553 = mc_event_new(ctx);
-        
-        if (event_7553 != NULL)
-            event_7553->bef = get_wall_time();
-        
-        int futhark_mc_scan_stage_3_parloop_7551_err = scheduler_execute_task(&ctx->scheduler, &futhark_mc_scan_stage_3_parloop_7551_task);
-        
-        if (futhark_mc_scan_stage_3_parloop_7551_err != 0) {
-            err = futhark_mc_scan_stage_3_parloop_7551_err;
-            goto cleanup;
-        }
-        if (event_7553 != NULL) {
-            event_7553->aft = get_wall_time();
-            lock_lock(&ctx->event_list_lock);
-            add_event(ctx, "futhark_mc_scan_stage_3_parloop_7551_total", strdup("nothing further"), event_7553, (event_report_fn) mc_event_report);
-            lock_unlock(&ctx->event_list_lock);
         }
     }
     
   cleanup:
     {
-        free(scan_stage_2_carry_mem_7379);
-        free(scan_stage_2_carry_mem_7381);
+        free(reduce_stage_1_tid_res_arr_mem_5875);
+        free(reduce_stage_1_tid_res_arr_mem_5877);
     }
-    if (event_7554 != NULL) {
-        event_7554->aft = get_wall_time();
+    if (event_5934 != NULL) {
+        event_5934->aft = get_wall_time();
         lock_lock(&ctx->event_list_lock);
-        add_event(ctx, "futhark_mc_segscan_task_7543", strdup("nothing further"), event_7554, (event_report_fn) mc_event_report);
+        add_event(ctx, "futhark_mc_segred_task_5927", strdup("nothing further"), event_5934, (event_report_fn) mc_event_report);
         lock_unlock(&ctx->event_list_lock);
     }
-    if (err == 0) { }
+    if (err == 0) {
+        *futhark_mc_task_5926->retval_defunc_0_reduce_comm_res_5862 = defunc_0_reduce_comm_res_5862;
+        *futhark_mc_task_5926->retval_defunc_0_reduce_comm_res_5863 = defunc_0_reduce_comm_res_5863;
+    }
     return err;
 }
 struct futhark_i32_1d {
@@ -12190,966 +9672,172 @@ const int64_t *futhark_shape_i32_1d(struct futhark_context *ctx, struct futhark_
     (void) ctx;
     return arr->shape;
 }
-struct futhark_bool_1d {
-    struct memblock mem;
-    int64_t shape[1];
-};
-struct futhark_bool_1d *futhark_new_bool_1d(struct futhark_context *ctx, const bool *data, int64_t dim0)
-{
-    int err = 0;
-    struct futhark_bool_1d *bad = NULL;
-    struct futhark_bool_1d *arr = (struct futhark_bool_1d *) malloc(sizeof(struct futhark_bool_1d));
-    
-    if (arr == NULL)
-        return bad;
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    arr->mem.references = NULL;
-    if (memblock_alloc(ctx, &arr->mem, dim0 * 1, "arr->mem"))
-        err = 1;
-    arr->shape[0] = dim0;
-    if ((size_t) dim0 * 1 > 0)
-        memmove(arr->mem.mem + 0, (const unsigned char *) data + 0, (size_t) dim0 * 1);
-    lock_unlock(&ctx->lock);
-    if (err != 0) {
-        free(arr);
-        return bad;
-    }
-    return arr;
-}
-struct futhark_bool_1d *futhark_new_raw_bool_1d(struct futhark_context *ctx, unsigned char *data, int64_t dim0)
-{
-    int err = 0;
-    struct futhark_bool_1d *bad = NULL;
-    struct futhark_bool_1d *arr = (struct futhark_bool_1d *) malloc(sizeof(struct futhark_bool_1d));
-    
-    if (arr == NULL)
-        return bad;
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    arr->mem.references = NULL;
-    arr->mem.mem = data;
-    arr->shape[0] = dim0;
-    lock_unlock(&ctx->lock);
-    return arr;
-}
-int futhark_free_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr)
-{
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    if (memblock_unref(ctx, &arr->mem, "arr->mem") != 0)
-        return 1;
-    lock_unlock(&ctx->lock);
-    free(arr);
-    return 0;
-}
-int futhark_values_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr, bool *data)
-{
-    int err = 0;
-    
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    if ((size_t) arr->shape[0] * 1 > 0)
-        memmove((unsigned char *) data + 0, arr->mem.mem + 0, (size_t) arr->shape[0] * 1);
-    lock_unlock(&ctx->lock);
-    return err;
-}
-int futhark_index_bool_1d(struct futhark_context *ctx, bool *out, struct futhark_bool_1d *arr, int64_t i0)
-{
-    int err = 0;
-    
-    if (i0 >= 0 && i0 < arr->shape[0]) {
-        lock_lock(&ctx->lock);
-        worker_local = &ctx->scheduler.workers[0];
-        if (1 > 0)
-            memmove((unsigned char *) out + 0, arr->mem.mem + 1 * (i0 * 1), 1);
-        lock_unlock(&ctx->lock);
-    } else {
-        err = 1;
-        set_error(ctx, strdup("Index out of bounds."));
-    }
-    return err;
-}
-unsigned char *futhark_values_raw_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr)
-{
-    (void) ctx;
-    return arr->mem.mem;
-}
-const int64_t *futhark_shape_bool_1d(struct futhark_context *ctx, struct futhark_bool_1d *arr)
-{
-    (void) ctx;
-    return arr->shape;
-}
 
-FUTHARK_FUN_ATTR int futrts_entry_bench_reduce(struct futhark_context *ctx, int32_t *out_prim_out_7427, struct memblock inp_mem_7349, int64_t dz2080U_6997)
+FUTHARK_FUN_ATTR int futrts_entry_test_process(struct futhark_context *ctx, int32_t *out_prim_out_5915, struct memblock xs_mem_5870, struct memblock ys_mem_5871, int64_t nz2080U_5563)
 {
     (void) ctx;
     
     int err = 0;
-    int32_t prim_out_7363;
-    int32_t defunc_0_reduce_res_7254;
-    int64_t flat_tid_7329 = (int64_t) 0;
+    int32_t prim_out_5872;
+    int32_t defunc_0_reduce_res_5860;
+    int64_t flat_tid_5864 = (int64_t) 0;
     
-    defunc_0_reduce_res_7254 = 0;
+    defunc_0_reduce_res_5860 = 0;
     
-    struct futhark_mc_task_7428 futhark_mc_task_7428_;
+    struct futhark_mc_task_5916 futhark_mc_task_5916_;
     
-    futhark_mc_task_7428_.ctx = ctx;
-    futhark_mc_task_7428_.free_flat_tid_7329 = flat_tid_7329;
-    futhark_mc_task_7428_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_task_7428_.retval_defunc_0_reduce_res_7254 = (int32_t *) &defunc_0_reduce_res_7254;
+    futhark_mc_task_5916_.ctx = ctx;
+    futhark_mc_task_5916_.free_flat_tid_5864 = flat_tid_5864;
+    futhark_mc_task_5916_.free_xs_mem_5870 = xs_mem_5870.mem;
+    futhark_mc_task_5916_.free_ys_mem_5871 = ys_mem_5871.mem;
+    futhark_mc_task_5916_.retval_defunc_0_reduce_res_5860 = (int32_t *) &defunc_0_reduce_res_5860;
     #if ISPC
-    futhark_mc_task_7428_.retval_defunc_0_reduce_res_7254 += programIndex;
+    futhark_mc_task_5916_.retval_defunc_0_reduce_res_5860 += programIndex;
     #endif
     
-    struct scheduler_segop futhark_mc_task_7428_task;
+    struct scheduler_segop futhark_mc_task_5916_task;
     
-    futhark_mc_task_7428_task.args = &futhark_mc_task_7428_;
-    futhark_mc_task_7428_task.top_level_fn = futhark_mc_segred_task_7429;
-    futhark_mc_task_7428_task.name = "futhark_mc_segred_task_7429";
-    futhark_mc_task_7428_task.iterations = dz2080U_6997;
-    futhark_mc_task_7428_task.task_time = &ctx->program->futhark_mc_segred_task_7429_total_time;
-    futhark_mc_task_7428_task.task_iter = &ctx->program->futhark_mc_segred_task_7429_total_iter;
-    futhark_mc_task_7428_task.sched = STATIC;
-    futhark_mc_task_7428_task.nested_fn = NULL;
+    futhark_mc_task_5916_task.args = &futhark_mc_task_5916_;
+    futhark_mc_task_5916_task.top_level_fn = futhark_mc_segred_task_5917;
+    futhark_mc_task_5916_task.name = "futhark_mc_segred_task_5917";
+    futhark_mc_task_5916_task.iterations = nz2080U_5563;
+    futhark_mc_task_5916_task.task_time = &ctx->program->futhark_mc_segred_task_5917_total_time;
+    futhark_mc_task_5916_task.task_iter = &ctx->program->futhark_mc_segred_task_5917_total_iter;
+    futhark_mc_task_5916_task.sched = STATIC;
+    futhark_mc_task_5916_task.nested_fn = NULL;
     
-    int futhark_mc_segred_task_7429_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7428_task);
+    int futhark_mc_segred_task_5917_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_5916_task);
     
-    if (futhark_mc_segred_task_7429_err != 0) {
-        err = futhark_mc_segred_task_7429_err;
+    if (futhark_mc_segred_task_5917_err != 0) {
+        err = futhark_mc_segred_task_5917_err;
         goto cleanup;
     }
-    prim_out_7363 = defunc_0_reduce_res_7254;
-    *out_prim_out_7427 = prim_out_7363;
+    prim_out_5872 = defunc_0_reduce_res_5860;
+    *out_prim_out_5915 = prim_out_5872;
     
   cleanup:
     { }
     return err;
 }
-FUTHARK_FUN_ATTR int futrts_entry_bench_scan(struct futhark_context *ctx, struct memblock *mem_out_p_7436, struct memblock inp_mem_7349, int64_t dz2080U_6722)
+FUTHARK_FUN_ATTR int futrts_entry_test_process_idx(struct futhark_context *ctx, int32_t *out_prim_out_5924, int64_t *out_prim_out_5925, struct memblock xs_mem_5870, struct memblock ys_mem_5871, int64_t nz2080U_5714)
 {
     (void) ctx;
     
     int err = 0;
-    struct memblock mem_7351;
+    int32_t prim_out_5872;
+    int64_t prim_out_5873;
+    int32_t defunc_0_reduce_comm_res_5862;
+    int64_t defunc_0_reduce_comm_res_5863;
+    int64_t flat_tid_5866 = (int64_t) 0;
     
-    mem_7351.references = NULL;
+    defunc_0_reduce_comm_res_5862 = 0;
+    defunc_0_reduce_comm_res_5863 = (int64_t) 0;
     
-    struct memblock mem_out_7363;
+    struct futhark_mc_task_5926 futhark_mc_task_5926_;
     
-    mem_out_7363.references = NULL;
+    futhark_mc_task_5926_.ctx = ctx;
+    futhark_mc_task_5926_.free_flat_tid_5866 = flat_tid_5866;
+    futhark_mc_task_5926_.free_xs_mem_5870 = xs_mem_5870.mem;
+    futhark_mc_task_5926_.free_ys_mem_5871 = ys_mem_5871.mem;
+    futhark_mc_task_5926_.retval_defunc_0_reduce_comm_res_5862 = (int32_t *) &defunc_0_reduce_comm_res_5862;
+    #if ISPC
+    futhark_mc_task_5926_.retval_defunc_0_reduce_comm_res_5862 += programIndex;
+    #endif
+    futhark_mc_task_5926_.retval_defunc_0_reduce_comm_res_5863 = (int64_t *) &defunc_0_reduce_comm_res_5863;
+    #if ISPC
+    futhark_mc_task_5926_.retval_defunc_0_reduce_comm_res_5863 += programIndex;
+    #endif
     
-    int64_t bytes_7350 = (int64_t) 4 * dz2080U_6722;
+    struct scheduler_segop futhark_mc_task_5926_task;
     
-    if (memblock_alloc(ctx, &mem_7351, bytes_7350, "mem_7351")) {
-        err = 1;
+    futhark_mc_task_5926_task.args = &futhark_mc_task_5926_;
+    futhark_mc_task_5926_task.top_level_fn = futhark_mc_segred_task_5927;
+    futhark_mc_task_5926_task.name = "futhark_mc_segred_task_5927";
+    futhark_mc_task_5926_task.iterations = nz2080U_5714;
+    futhark_mc_task_5926_task.task_time = &ctx->program->futhark_mc_segred_task_5927_total_time;
+    futhark_mc_task_5926_task.task_iter = &ctx->program->futhark_mc_segred_task_5927_total_iter;
+    futhark_mc_task_5926_task.sched = STATIC;
+    futhark_mc_task_5926_task.nested_fn = NULL;
+    
+    int futhark_mc_segred_task_5927_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_5926_task);
+    
+    if (futhark_mc_segred_task_5927_err != 0) {
+        err = futhark_mc_segred_task_5927_err;
         goto cleanup;
     }
-    
-    int64_t flat_tid_7327 = (int64_t) 0;
-    struct futhark_mc_task_7437 futhark_mc_task_7437_;
-    
-    futhark_mc_task_7437_.ctx = ctx;
-    futhark_mc_task_7437_.free_dz2080U_6722 = dz2080U_6722;
-    futhark_mc_task_7437_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_task_7437_.free_mem_7351 = mem_7351.mem;
-    
-    struct scheduler_segop futhark_mc_task_7437_task;
-    
-    futhark_mc_task_7437_task.args = &futhark_mc_task_7437_;
-    futhark_mc_task_7437_task.top_level_fn = futhark_mc_segscan_task_7438;
-    futhark_mc_task_7437_task.name = "futhark_mc_segscan_task_7438";
-    futhark_mc_task_7437_task.iterations = dz2080U_6722;
-    futhark_mc_task_7437_task.task_time = &ctx->program->futhark_mc_segscan_task_7438_total_time;
-    futhark_mc_task_7437_task.task_iter = &ctx->program->futhark_mc_segscan_task_7438_total_iter;
-    futhark_mc_task_7437_task.sched = STATIC;
-    futhark_mc_task_7437_task.nested_fn = NULL;
-    
-    int futhark_mc_segscan_task_7438_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7437_task);
-    
-    if (futhark_mc_segscan_task_7438_err != 0) {
-        err = futhark_mc_segscan_task_7438_err;
-        goto cleanup;
-    }
-    if (memblock_set(ctx, &mem_out_7363, &mem_7351, "mem_7351") != 0)
-        return 1;
-    if (memblock_set(ctx, &*mem_out_p_7436, &mem_out_7363, "mem_out_7363") != 0)
-        return 1;
+    prim_out_5872 = defunc_0_reduce_comm_res_5862;
+    prim_out_5873 = defunc_0_reduce_comm_res_5863;
+    *out_prim_out_5924 = prim_out_5872;
+    *out_prim_out_5925 = prim_out_5873;
     
   cleanup:
-    {
-        if (memblock_unref(ctx, &mem_7351, "mem_7351") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_out_7363, "mem_out_7363") != 0)
-            return 1;
-    }
-    return err;
-}
-FUTHARK_FUN_ATTR int futrts_entry_bench_segreduce(struct futhark_context *ctx, struct memblock *mem_out_p_7449, int64_t *out_prim_out_7450, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6967)
-{
-    (void) ctx;
-    
-    int err = 0;
-    int64_t mem_7352_cached_sizze_7451 = 0;
-    unsigned char *mem_7352 = NULL;
-    int64_t mem_7354_cached_sizze_7452 = 0;
-    unsigned char *mem_7354 = NULL;
-    int64_t mem_7356_cached_sizze_7453 = 0;
-    unsigned char *mem_7356 = NULL;
-    int64_t mem_7357_cached_sizze_7454 = 0;
-    unsigned char *mem_7357 = NULL;
-    struct memblock mem_7359;
-    
-    mem_7359.references = NULL;
-    
-    struct memblock mem_7361;
-    
-    mem_7361.references = NULL;
-    
-    struct memblock ext_mem_7362;
-    
-    ext_mem_7362.references = NULL;
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    int64_t prim_out_7364;
-    int64_t zeze_rhs_7216 = sub64(dz2081U_6967, (int64_t) 1);
-    bool y_7234 = slt64(zeze_rhs_7216, dz2081U_6967);
-    bool x_7233 = sle64((int64_t) 0, zeze_rhs_7216);
-    bool bounds_check_7235 = x_7233 && y_7234;
-    bool index_certs_7236;
-    
-    if (!bounds_check_7235) {
-        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) zeze_rhs_7216, "] out of bounds for array of shape [", (long long) dz2081U_6967, "].", "-> #0  /prelude/array.fut:28:29-37\n   #1  segment.fut:22:30-43\n   #2  segment.fut:108:71-84\n   #3  segment.fut:108:1-85\n"));
-        err = FUTHARK_PROGRAM_ERROR;
-        goto cleanup;
-    }
-    
-    int64_t bytes_7351 = (int64_t) 8 * dz2081U_6967;
-    bool cond_7238 = dz2081U_6967 == (int64_t) 0;
-    
-    if (mem_7352_cached_sizze_7451 < bytes_7351) {
-        err = lexical_realloc(ctx, &mem_7352, &mem_7352_cached_sizze_7451, bytes_7351);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    if (mem_7354_cached_sizze_7452 < bytes_7351) {
-        err = lexical_realloc(ctx, &mem_7354, &mem_7354_cached_sizze_7452, bytes_7351);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    
-    int64_t flat_tid_7341 = (int64_t) 0;
-    struct futhark_mc_task_7455 futhark_mc_task_7455_;
-    
-    futhark_mc_task_7455_.ctx = ctx;
-    futhark_mc_task_7455_.free_dz2081U_6967 = dz2081U_6967;
-    futhark_mc_task_7455_.free_zeze_rhs_7216 = zeze_rhs_7216;
-    futhark_mc_task_7455_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_task_7455_.free_mem_7352 = mem_7352;
-    futhark_mc_task_7455_.free_mem_7354 = mem_7354;
-    
-    struct scheduler_segop futhark_mc_task_7455_task;
-    
-    futhark_mc_task_7455_task.args = &futhark_mc_task_7455_;
-    futhark_mc_task_7455_task.top_level_fn = futhark_mc_segscan_task_7456;
-    futhark_mc_task_7455_task.name = "futhark_mc_segscan_task_7456";
-    futhark_mc_task_7455_task.iterations = dz2081U_6967;
-    futhark_mc_task_7455_task.task_time = &ctx->program->futhark_mc_segscan_task_7456_total_time;
-    futhark_mc_task_7455_task.task_iter = &ctx->program->futhark_mc_segscan_task_7456_total_iter;
-    futhark_mc_task_7455_task.sched = STATIC;
-    futhark_mc_task_7455_task.nested_fn = NULL;
-    
-    int futhark_mc_segscan_task_7456_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7455_task);
-    
-    if (futhark_mc_segscan_task_7456_err != 0) {
-        err = futhark_mc_segscan_task_7456_err;
-        goto cleanup;
-    }
-    
-    int64_t last_res_7237 = ((int64_t *) mem_7352)[zeze_rhs_7216];
-    int64_t defunc_0_segreduce_res_7239;
-    
-    if (cond_7238) {
-        defunc_0_segreduce_res_7239 = (int64_t) 0;
-    } else {
-        defunc_0_segreduce_res_7239 = last_res_7237;
-    }
-    
-    int64_t bytes_7355 = (int64_t) 4 * dz2081U_6967;
-    int64_t bytes_7358 = (int64_t) 4 * last_res_7237;
-    int64_t bytes_7360 = (int64_t) 4 * defunc_0_segreduce_res_7239;
-    
-    if (cond_7238) {
-        if (memblock_alloc(ctx, &mem_7361, bytes_7360, "mem_7361")) {
-            err = 1;
-            goto cleanup;
-        }
-        if (memblock_set(ctx, &ext_mem_7362, &mem_7361, "mem_7361") != 0)
-            return 1;
-    } else {
-        if (mem_7356_cached_sizze_7453 < bytes_7355) {
-            err = lexical_realloc(ctx, &mem_7356, &mem_7356_cached_sizze_7453, bytes_7355);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (mem_7357_cached_sizze_7454 < dz2081U_6967) {
-            err = lexical_realloc(ctx, &mem_7357, &mem_7357_cached_sizze_7454, dz2081U_6967);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        
-        int64_t flat_tid_7343 = (int64_t) 0;
-        struct futhark_mc_task_7467 futhark_mc_task_7467_;
-        
-        futhark_mc_task_7467_.ctx = ctx;
-        futhark_mc_task_7467_.free_dz2081U_6967 = dz2081U_6967;
-        futhark_mc_task_7467_.free_inp_mem_7349 = inp_mem_7349.mem;
-        futhark_mc_task_7467_.free_flags_mem_7350 = flags_mem_7350.mem;
-        futhark_mc_task_7467_.free_mem_7356 = mem_7356;
-        futhark_mc_task_7467_.free_mem_7357 = mem_7357;
-        
-        struct scheduler_segop futhark_mc_task_7467_task;
-        
-        futhark_mc_task_7467_task.args = &futhark_mc_task_7467_;
-        futhark_mc_task_7467_task.top_level_fn = futhark_mc_segscan_task_7468;
-        futhark_mc_task_7467_task.name = "futhark_mc_segscan_task_7468";
-        futhark_mc_task_7467_task.iterations = dz2081U_6967;
-        futhark_mc_task_7467_task.task_time = &ctx->program->futhark_mc_segscan_task_7468_total_time;
-        futhark_mc_task_7467_task.task_iter = &ctx->program->futhark_mc_segscan_task_7468_total_iter;
-        futhark_mc_task_7467_task.sched = STATIC;
-        futhark_mc_task_7467_task.nested_fn = NULL;
-        
-        int futhark_mc_segscan_task_7468_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7467_task);
-        
-        if (futhark_mc_segscan_task_7468_err != 0) {
-            err = futhark_mc_segscan_task_7468_err;
-            goto cleanup;
-        }
-        if (memblock_alloc(ctx, &mem_7359, bytes_7358, "mem_7359")) {
-            err = 1;
-            goto cleanup;
-        }
-        for (int64_t nest_i_7417 = 0; nest_i_7417 < last_res_7237; nest_i_7417++) {
-            ((int32_t *) mem_7359.mem)[nest_i_7417] = 0;
-        }
-        
-        int64_t flat_tid_7345 = (int64_t) 0;
-        struct futhark_mc_task_7480 futhark_mc_task_7480_;
-        
-        futhark_mc_task_7480_.ctx = ctx;
-        futhark_mc_task_7480_.free_dz2081U_6967 = dz2081U_6967;
-        futhark_mc_task_7480_.free_last_res_7237 = last_res_7237;
-        futhark_mc_task_7480_.free_mem_7352 = mem_7352;
-        futhark_mc_task_7480_.free_mem_7354 = mem_7354;
-        futhark_mc_task_7480_.free_mem_7356 = mem_7356;
-        futhark_mc_task_7480_.free_mem_7359 = mem_7359.mem;
-        
-        struct scheduler_segop futhark_mc_task_7480_task;
-        
-        futhark_mc_task_7480_task.args = &futhark_mc_task_7480_;
-        futhark_mc_task_7480_task.top_level_fn = futhark_mc_segmap_task_7481;
-        futhark_mc_task_7480_task.name = "futhark_mc_segmap_task_7481";
-        futhark_mc_task_7480_task.iterations = dz2081U_6967;
-        futhark_mc_task_7480_task.task_time = &ctx->program->futhark_mc_segmap_task_7481_total_time;
-        futhark_mc_task_7480_task.task_iter = &ctx->program->futhark_mc_segmap_task_7481_total_iter;
-        futhark_mc_task_7480_task.sched = STATIC;
-        futhark_mc_task_7480_task.nested_fn = NULL;
-        
-        int futhark_mc_segmap_task_7481_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7480_task);
-        
-        if (futhark_mc_segmap_task_7481_err != 0) {
-            err = futhark_mc_segmap_task_7481_err;
-            goto cleanup;
-        }
-        if (memblock_set(ctx, &ext_mem_7362, &mem_7359, "mem_7359") != 0)
-            return 1;
-    }
-    if (memblock_set(ctx, &mem_out_7363, &ext_mem_7362, "ext_mem_7362") != 0)
-        return 1;
-    prim_out_7364 = defunc_0_segreduce_res_7239;
-    if (memblock_set(ctx, &*mem_out_p_7449, &mem_out_7363, "mem_out_7363") != 0)
-        return 1;
-    *out_prim_out_7450 = prim_out_7364;
-    
-  cleanup:
-    {
-        free(mem_7352);
-        free(mem_7354);
-        free(mem_7356);
-        free(mem_7357);
-        if (memblock_unref(ctx, &mem_7359, "mem_7359") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_7361, "mem_7361") != 0)
-            return 1;
-        if (memblock_unref(ctx, &ext_mem_7362, "ext_mem_7362") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_out_7363, "mem_out_7363") != 0)
-            return 1;
-    }
-    return err;
-}
-FUTHARK_FUN_ATTR int futrts_entry_bench_segscan(struct futhark_context *ctx, struct memblock *mem_out_p_7487, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6693)
-{
-    (void) ctx;
-    
-    int err = 0;
-    int64_t mem_7353_cached_sizze_7488 = 0;
-    unsigned char *mem_7353 = NULL;
-    struct memblock mem_7352;
-    
-    mem_7352.references = NULL;
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    int64_t bytes_7351 = (int64_t) 4 * dz2081U_6693;
-    
-    if (memblock_alloc(ctx, &mem_7352, bytes_7351, "mem_7352")) {
-        err = 1;
-        goto cleanup;
-    }
-    if (mem_7353_cached_sizze_7488 < dz2081U_6693) {
-        err = lexical_realloc(ctx, &mem_7353, &mem_7353_cached_sizze_7488, dz2081U_6693);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    
-    int64_t flat_tid_7333 = (int64_t) 0;
-    struct futhark_mc_task_7489 futhark_mc_task_7489_;
-    
-    futhark_mc_task_7489_.ctx = ctx;
-    futhark_mc_task_7489_.free_dz2081U_6693 = dz2081U_6693;
-    futhark_mc_task_7489_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_task_7489_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_task_7489_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_task_7489_.free_mem_7353 = mem_7353;
-    
-    struct scheduler_segop futhark_mc_task_7489_task;
-    
-    futhark_mc_task_7489_task.args = &futhark_mc_task_7489_;
-    futhark_mc_task_7489_task.top_level_fn = futhark_mc_segscan_task_7490;
-    futhark_mc_task_7489_task.name = "futhark_mc_segscan_task_7490";
-    futhark_mc_task_7489_task.iterations = dz2081U_6693;
-    futhark_mc_task_7489_task.task_time = &ctx->program->futhark_mc_segscan_task_7490_total_time;
-    futhark_mc_task_7489_task.task_iter = &ctx->program->futhark_mc_segscan_task_7490_total_iter;
-    futhark_mc_task_7489_task.sched = STATIC;
-    futhark_mc_task_7489_task.nested_fn = NULL;
-    
-    int futhark_mc_segscan_task_7490_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7489_task);
-    
-    if (futhark_mc_segscan_task_7490_err != 0) {
-        err = futhark_mc_segscan_task_7490_err;
-        goto cleanup;
-    }
-    if (memblock_set(ctx, &mem_out_7363, &mem_7352, "mem_7352") != 0)
-        return 1;
-    if (memblock_set(ctx, &*mem_out_p_7487, &mem_out_7363, "mem_out_7363") != 0)
-        return 1;
-    
-  cleanup:
-    {
-        free(mem_7353);
-        if (memblock_unref(ctx, &mem_7352, "mem_7352") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_out_7363, "mem_out_7363") != 0)
-            return 1;
-    }
-    return err;
-}
-FUTHARK_FUN_ATTR int futrts_entry_test_segreduce(struct futhark_context *ctx, struct memblock *mem_out_p_7502, int64_t *out_prim_out_7503, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6583, int32_t ne_6586)
-{
-    (void) ctx;
-    
-    int err = 0;
-    int64_t mem_7352_cached_sizze_7504 = 0;
-    unsigned char *mem_7352 = NULL;
-    int64_t mem_7354_cached_sizze_7505 = 0;
-    unsigned char *mem_7354 = NULL;
-    int64_t mem_7356_cached_sizze_7506 = 0;
-    unsigned char *mem_7356 = NULL;
-    int64_t mem_7357_cached_sizze_7507 = 0;
-    unsigned char *mem_7357 = NULL;
-    struct memblock mem_7359;
-    
-    mem_7359.references = NULL;
-    
-    struct memblock mem_7361;
-    
-    mem_7361.references = NULL;
-    
-    struct memblock ext_mem_7362;
-    
-    ext_mem_7362.references = NULL;
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    int64_t prim_out_7364;
-    int64_t zeze_rhs_7217 = sub64(dz2081U_6583, (int64_t) 1);
-    bool y_7235 = slt64(zeze_rhs_7217, dz2081U_6583);
-    bool x_7234 = sle64((int64_t) 0, zeze_rhs_7217);
-    bool bounds_check_7236 = x_7234 && y_7235;
-    bool index_certs_7237;
-    
-    if (!bounds_check_7236) {
-        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) zeze_rhs_7217, "] out of bounds for array of shape [", (long long) dz2081U_6583, "].", "-> #0  /prelude/array.fut:28:29-37\n   #1  segment.fut:22:30-43\n   #2  segment.fut:72:82-95\n   #3  segment.fut:72:1-96\n"));
-        err = FUTHARK_PROGRAM_ERROR;
-        goto cleanup;
-    }
-    
-    int64_t bytes_7351 = (int64_t) 8 * dz2081U_6583;
-    bool cond_7239 = dz2081U_6583 == (int64_t) 0;
-    
-    if (mem_7352_cached_sizze_7504 < bytes_7351) {
-        err = lexical_realloc(ctx, &mem_7352, &mem_7352_cached_sizze_7504, bytes_7351);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    if (mem_7354_cached_sizze_7505 < bytes_7351) {
-        err = lexical_realloc(ctx, &mem_7354, &mem_7354_cached_sizze_7505, bytes_7351);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    
-    int64_t flat_tid_7335 = (int64_t) 0;
-    struct futhark_mc_task_7508 futhark_mc_task_7508_;
-    
-    futhark_mc_task_7508_.ctx = ctx;
-    futhark_mc_task_7508_.free_dz2081U_6583 = dz2081U_6583;
-    futhark_mc_task_7508_.free_zeze_rhs_7217 = zeze_rhs_7217;
-    futhark_mc_task_7508_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_task_7508_.free_mem_7352 = mem_7352;
-    futhark_mc_task_7508_.free_mem_7354 = mem_7354;
-    
-    struct scheduler_segop futhark_mc_task_7508_task;
-    
-    futhark_mc_task_7508_task.args = &futhark_mc_task_7508_;
-    futhark_mc_task_7508_task.top_level_fn = futhark_mc_segscan_task_7509;
-    futhark_mc_task_7508_task.name = "futhark_mc_segscan_task_7509";
-    futhark_mc_task_7508_task.iterations = dz2081U_6583;
-    futhark_mc_task_7508_task.task_time = &ctx->program->futhark_mc_segscan_task_7509_total_time;
-    futhark_mc_task_7508_task.task_iter = &ctx->program->futhark_mc_segscan_task_7509_total_iter;
-    futhark_mc_task_7508_task.sched = STATIC;
-    futhark_mc_task_7508_task.nested_fn = NULL;
-    
-    int futhark_mc_segscan_task_7509_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7508_task);
-    
-    if (futhark_mc_segscan_task_7509_err != 0) {
-        err = futhark_mc_segscan_task_7509_err;
-        goto cleanup;
-    }
-    
-    int64_t last_res_7238 = ((int64_t *) mem_7352)[zeze_rhs_7217];
-    int64_t defunc_0_segreduce_res_7240;
-    
-    if (cond_7239) {
-        defunc_0_segreduce_res_7240 = (int64_t) 0;
-    } else {
-        defunc_0_segreduce_res_7240 = last_res_7238;
-    }
-    
-    int64_t bytes_7355 = (int64_t) 4 * dz2081U_6583;
-    int64_t bytes_7358 = (int64_t) 4 * last_res_7238;
-    int64_t bytes_7360 = (int64_t) 4 * defunc_0_segreduce_res_7240;
-    
-    if (cond_7239) {
-        if (memblock_alloc(ctx, &mem_7361, bytes_7360, "mem_7361")) {
-            err = 1;
-            goto cleanup;
-        }
-        if (memblock_set(ctx, &ext_mem_7362, &mem_7361, "mem_7361") != 0)
-            return 1;
-    } else {
-        if (mem_7356_cached_sizze_7506 < bytes_7355) {
-            err = lexical_realloc(ctx, &mem_7356, &mem_7356_cached_sizze_7506, bytes_7355);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        if (mem_7357_cached_sizze_7507 < dz2081U_6583) {
-            err = lexical_realloc(ctx, &mem_7357, &mem_7357_cached_sizze_7507, dz2081U_6583);
-            if (err != FUTHARK_SUCCESS)
-                goto cleanup;
-        }
-        
-        int64_t flat_tid_7337 = (int64_t) 0;
-        struct futhark_mc_task_7520 futhark_mc_task_7520_;
-        
-        futhark_mc_task_7520_.ctx = ctx;
-        futhark_mc_task_7520_.free_dz2081U_6583 = dz2081U_6583;
-        futhark_mc_task_7520_.free_ne_6586 = ne_6586;
-        futhark_mc_task_7520_.free_inp_mem_7349 = inp_mem_7349.mem;
-        futhark_mc_task_7520_.free_flags_mem_7350 = flags_mem_7350.mem;
-        futhark_mc_task_7520_.free_mem_7356 = mem_7356;
-        futhark_mc_task_7520_.free_mem_7357 = mem_7357;
-        
-        struct scheduler_segop futhark_mc_task_7520_task;
-        
-        futhark_mc_task_7520_task.args = &futhark_mc_task_7520_;
-        futhark_mc_task_7520_task.top_level_fn = futhark_mc_segscan_task_7521;
-        futhark_mc_task_7520_task.name = "futhark_mc_segscan_task_7521";
-        futhark_mc_task_7520_task.iterations = dz2081U_6583;
-        futhark_mc_task_7520_task.task_time = &ctx->program->futhark_mc_segscan_task_7521_total_time;
-        futhark_mc_task_7520_task.task_iter = &ctx->program->futhark_mc_segscan_task_7521_total_iter;
-        futhark_mc_task_7520_task.sched = STATIC;
-        futhark_mc_task_7520_task.nested_fn = NULL;
-        
-        int futhark_mc_segscan_task_7521_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7520_task);
-        
-        if (futhark_mc_segscan_task_7521_err != 0) {
-            err = futhark_mc_segscan_task_7521_err;
-            goto cleanup;
-        }
-        if (memblock_alloc(ctx, &mem_7359, bytes_7358, "mem_7359")) {
-            err = 1;
-            goto cleanup;
-        }
-        for (int64_t nest_i_7417 = 0; nest_i_7417 < last_res_7238; nest_i_7417++) {
-            ((int32_t *) mem_7359.mem)[nest_i_7417] = ne_6586;
-        }
-        
-        int64_t flat_tid_7339 = (int64_t) 0;
-        struct futhark_mc_task_7533 futhark_mc_task_7533_;
-        
-        futhark_mc_task_7533_.ctx = ctx;
-        futhark_mc_task_7533_.free_dz2081U_6583 = dz2081U_6583;
-        futhark_mc_task_7533_.free_last_res_7238 = last_res_7238;
-        futhark_mc_task_7533_.free_mem_7352 = mem_7352;
-        futhark_mc_task_7533_.free_mem_7354 = mem_7354;
-        futhark_mc_task_7533_.free_mem_7356 = mem_7356;
-        futhark_mc_task_7533_.free_mem_7359 = mem_7359.mem;
-        
-        struct scheduler_segop futhark_mc_task_7533_task;
-        
-        futhark_mc_task_7533_task.args = &futhark_mc_task_7533_;
-        futhark_mc_task_7533_task.top_level_fn = futhark_mc_segmap_task_7534;
-        futhark_mc_task_7533_task.name = "futhark_mc_segmap_task_7534";
-        futhark_mc_task_7533_task.iterations = dz2081U_6583;
-        futhark_mc_task_7533_task.task_time = &ctx->program->futhark_mc_segmap_task_7534_total_time;
-        futhark_mc_task_7533_task.task_iter = &ctx->program->futhark_mc_segmap_task_7534_total_iter;
-        futhark_mc_task_7533_task.sched = STATIC;
-        futhark_mc_task_7533_task.nested_fn = NULL;
-        
-        int futhark_mc_segmap_task_7534_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7533_task);
-        
-        if (futhark_mc_segmap_task_7534_err != 0) {
-            err = futhark_mc_segmap_task_7534_err;
-            goto cleanup;
-        }
-        if (memblock_set(ctx, &ext_mem_7362, &mem_7359, "mem_7359") != 0)
-            return 1;
-    }
-    if (memblock_set(ctx, &mem_out_7363, &ext_mem_7362, "ext_mem_7362") != 0)
-        return 1;
-    prim_out_7364 = defunc_0_segreduce_res_7240;
-    if (memblock_set(ctx, &*mem_out_p_7502, &mem_out_7363, "mem_out_7363") != 0)
-        return 1;
-    *out_prim_out_7503 = prim_out_7364;
-    
-  cleanup:
-    {
-        free(mem_7352);
-        free(mem_7354);
-        free(mem_7356);
-        free(mem_7357);
-        if (memblock_unref(ctx, &mem_7359, "mem_7359") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_7361, "mem_7361") != 0)
-            return 1;
-        if (memblock_unref(ctx, &ext_mem_7362, "ext_mem_7362") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_out_7363, "mem_out_7363") != 0)
-            return 1;
-    }
-    return err;
-}
-FUTHARK_FUN_ATTR int futrts_entry_test_segscan(struct futhark_context *ctx, struct memblock *mem_out_p_7540, struct memblock inp_mem_7349, struct memblock flags_mem_7350, int64_t dz2081U_6241, int32_t ne_6244)
-{
-    (void) ctx;
-    
-    int err = 0;
-    int64_t mem_7353_cached_sizze_7541 = 0;
-    unsigned char *mem_7353 = NULL;
-    struct memblock mem_7352;
-    
-    mem_7352.references = NULL;
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    int64_t bytes_7351 = (int64_t) 4 * dz2081U_6241;
-    
-    if (memblock_alloc(ctx, &mem_7352, bytes_7351, "mem_7352")) {
-        err = 1;
-        goto cleanup;
-    }
-    if (mem_7353_cached_sizze_7541 < dz2081U_6241) {
-        err = lexical_realloc(ctx, &mem_7353, &mem_7353_cached_sizze_7541, dz2081U_6241);
-        if (err != FUTHARK_SUCCESS)
-            goto cleanup;
-    }
-    
-    int64_t flat_tid_7331 = (int64_t) 0;
-    struct futhark_mc_task_7542 futhark_mc_task_7542_;
-    
-    futhark_mc_task_7542_.ctx = ctx;
-    futhark_mc_task_7542_.free_dz2081U_6241 = dz2081U_6241;
-    futhark_mc_task_7542_.free_ne_6244 = ne_6244;
-    futhark_mc_task_7542_.free_inp_mem_7349 = inp_mem_7349.mem;
-    futhark_mc_task_7542_.free_flags_mem_7350 = flags_mem_7350.mem;
-    futhark_mc_task_7542_.free_mem_7352 = mem_7352.mem;
-    futhark_mc_task_7542_.free_mem_7353 = mem_7353;
-    
-    struct scheduler_segop futhark_mc_task_7542_task;
-    
-    futhark_mc_task_7542_task.args = &futhark_mc_task_7542_;
-    futhark_mc_task_7542_task.top_level_fn = futhark_mc_segscan_task_7543;
-    futhark_mc_task_7542_task.name = "futhark_mc_segscan_task_7543";
-    futhark_mc_task_7542_task.iterations = dz2081U_6241;
-    futhark_mc_task_7542_task.task_time = &ctx->program->futhark_mc_segscan_task_7543_total_time;
-    futhark_mc_task_7542_task.task_iter = &ctx->program->futhark_mc_segscan_task_7543_total_iter;
-    futhark_mc_task_7542_task.sched = STATIC;
-    futhark_mc_task_7542_task.nested_fn = NULL;
-    
-    int futhark_mc_segscan_task_7543_err = scheduler_prepare_task(&ctx->scheduler, &futhark_mc_task_7542_task);
-    
-    if (futhark_mc_segscan_task_7543_err != 0) {
-        err = futhark_mc_segscan_task_7543_err;
-        goto cleanup;
-    }
-    if (memblock_set(ctx, &mem_out_7363, &mem_7352, "mem_7352") != 0)
-        return 1;
-    if (memblock_set(ctx, &*mem_out_p_7540, &mem_out_7363, "mem_out_7363") != 0)
-        return 1;
-    
-  cleanup:
-    {
-        free(mem_7353);
-        if (memblock_unref(ctx, &mem_7352, "mem_7352") != 0)
-            return 1;
-        if (memblock_unref(ctx, &mem_out_7363, "mem_out_7363") != 0)
-            return 1;
-    }
+    { }
     return err;
 }
 
-int futhark_entry_bench_reduce(struct futhark_context *ctx, int32_t *out0, const struct futhark_i32_1d *in0)
+int futhark_entry_test_process(struct futhark_context *ctx, int32_t *out0, const struct futhark_i32_1d *in0, const struct futhark_i32_1d *in1)
 {
-    int64_t dz2080U_6997 = (int64_t) 0;
-    int32_t prim_out_7363 = 0;
+    int64_t nz2080U_5563 = (int64_t) 0;
+    int32_t prim_out_5872 = 0;
     int ret = 0;
     
     lock_lock(&ctx->lock);
     worker_local = &ctx->scheduler.workers[0];
     
-    struct memblock inp_mem_7349;
+    struct memblock ys_mem_5871;
     
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2080U_6997 = in0->shape[0];
-    if (!(dz2080U_6997 == in0->shape[0])) {
+    ys_mem_5871.references = NULL;
+    
+    struct memblock xs_mem_5870;
+    
+    xs_mem_5870.references = NULL;
+    xs_mem_5870 = in0->mem;
+    nz2080U_5563 = in0->shape[0];
+    ys_mem_5871 = in1->mem;
+    nz2080U_5563 = in1->shape[0];
+    if (!(nz2080U_5563 == in0->shape[0] && nz2080U_5563 == in1->shape[0])) {
         ret = 1;
         set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
     }
     if (ret == 0) {
-        ret = futrts_entry_bench_reduce(ctx, &prim_out_7363, inp_mem_7349, dz2080U_6997);
+        ret = futrts_entry_test_process(ctx, &prim_out_5872, xs_mem_5870, ys_mem_5871, nz2080U_5563);
         if (ret == 0) {
-            *out0 = prim_out_7363;
+            *out0 = prim_out_5872;
         }
     }
     lock_unlock(&ctx->lock);
     return ret;
 }
-int futhark_entry_bench_scan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0)
+int futhark_entry_test_process_idx(struct futhark_context *ctx, int32_t *out0, int64_t *out1, const struct futhark_i32_1d *in0, const struct futhark_i32_1d *in1)
 {
-    int64_t dz2080U_6722 = (int64_t) 0;
+    int64_t nz2080U_5714 = (int64_t) 0;
+    int32_t prim_out_5872 = 0;
+    int64_t prim_out_5873 = (int64_t) 0;
     int ret = 0;
     
     lock_lock(&ctx->lock);
     worker_local = &ctx->scheduler.workers[0];
     
-    struct memblock mem_out_7363;
+    struct memblock ys_mem_5871;
     
-    mem_out_7363.references = NULL;
+    ys_mem_5871.references = NULL;
     
-    struct memblock inp_mem_7349;
+    struct memblock xs_mem_5870;
     
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2080U_6722 = in0->shape[0];
-    if (!(dz2080U_6722 == in0->shape[0])) {
+    xs_mem_5870.references = NULL;
+    xs_mem_5870 = in0->mem;
+    nz2080U_5714 = in0->shape[0];
+    ys_mem_5871 = in1->mem;
+    nz2080U_5714 = in1->shape[0];
+    if (!(nz2080U_5714 == in0->shape[0] && nz2080U_5714 == in1->shape[0])) {
         ret = 1;
         set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
     }
     if (ret == 0) {
-        ret = futrts_entry_bench_scan(ctx, &mem_out_7363, inp_mem_7349, dz2080U_6722);
+        ret = futrts_entry_test_process_idx(ctx, &prim_out_5872, &prim_out_5873, xs_mem_5870, ys_mem_5871, nz2080U_5714);
         if (ret == 0) {
-            assert((*out0 = (struct futhark_i32_1d *) malloc(sizeof(struct futhark_i32_1d))) != NULL);
-            (*out0)->mem = mem_out_7363;
-            (*out0)->shape[0] = dz2080U_6722;
-        }
-    }
-    lock_unlock(&ctx->lock);
-    return ret;
-}
-int futhark_entry_bench_segreduce(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1)
-{
-    int64_t dz2081U_6967 = (int64_t) 0;
-    int64_t prim_out_7364 = (int64_t) 0;
-    int ret = 0;
-    
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    struct memblock flags_mem_7350;
-    
-    flags_mem_7350.references = NULL;
-    
-    struct memblock inp_mem_7349;
-    
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2081U_6967 = in0->shape[0];
-    flags_mem_7350 = in1->mem;
-    dz2081U_6967 = in1->shape[0];
-    if (!(dz2081U_6967 == in0->shape[0] && dz2081U_6967 == in1->shape[0])) {
-        ret = 1;
-        set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
-    }
-    if (ret == 0) {
-        ret = futrts_entry_bench_segreduce(ctx, &mem_out_7363, &prim_out_7364, inp_mem_7349, flags_mem_7350, dz2081U_6967);
-        if (ret == 0) {
-            assert((*out0 = (struct futhark_i32_1d *) malloc(sizeof(struct futhark_i32_1d))) != NULL);
-            (*out0)->mem = mem_out_7363;
-            (*out0)->shape[0] = prim_out_7364;
-        }
-    }
-    lock_unlock(&ctx->lock);
-    return ret;
-}
-int futhark_entry_bench_segscan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1)
-{
-    int64_t dz2081U_6693 = (int64_t) 0;
-    int ret = 0;
-    
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    struct memblock flags_mem_7350;
-    
-    flags_mem_7350.references = NULL;
-    
-    struct memblock inp_mem_7349;
-    
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2081U_6693 = in0->shape[0];
-    flags_mem_7350 = in1->mem;
-    dz2081U_6693 = in1->shape[0];
-    if (!(dz2081U_6693 == in0->shape[0] && dz2081U_6693 == in1->shape[0])) {
-        ret = 1;
-        set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
-    }
-    if (ret == 0) {
-        ret = futrts_entry_bench_segscan(ctx, &mem_out_7363, inp_mem_7349, flags_mem_7350, dz2081U_6693);
-        if (ret == 0) {
-            assert((*out0 = (struct futhark_i32_1d *) malloc(sizeof(struct futhark_i32_1d))) != NULL);
-            (*out0)->mem = mem_out_7363;
-            (*out0)->shape[0] = dz2081U_6693;
-        }
-    }
-    lock_unlock(&ctx->lock);
-    return ret;
-}
-int futhark_entry_test_segreduce(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1, const int32_t in2)
-{
-    int64_t dz2081U_6583 = (int64_t) 0;
-    int32_t ne_6586 = 0;
-    int64_t prim_out_7364 = (int64_t) 0;
-    int ret = 0;
-    
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    struct memblock flags_mem_7350;
-    
-    flags_mem_7350.references = NULL;
-    
-    struct memblock inp_mem_7349;
-    
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2081U_6583 = in0->shape[0];
-    flags_mem_7350 = in1->mem;
-    dz2081U_6583 = in1->shape[0];
-    ne_6586 = in2;
-    if (!(dz2081U_6583 == in0->shape[0] && dz2081U_6583 == in1->shape[0])) {
-        ret = 1;
-        set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
-    }
-    if (ret == 0) {
-        ret = futrts_entry_test_segreduce(ctx, &mem_out_7363, &prim_out_7364, inp_mem_7349, flags_mem_7350, dz2081U_6583, ne_6586);
-        if (ret == 0) {
-            assert((*out0 = (struct futhark_i32_1d *) malloc(sizeof(struct futhark_i32_1d))) != NULL);
-            (*out0)->mem = mem_out_7363;
-            (*out0)->shape[0] = prim_out_7364;
-        }
-    }
-    lock_unlock(&ctx->lock);
-    return ret;
-}
-int futhark_entry_test_segscan(struct futhark_context *ctx, struct futhark_i32_1d **out0, const struct futhark_i32_1d *in0, const struct futhark_bool_1d *in1, const int32_t in2)
-{
-    int64_t dz2081U_6241 = (int64_t) 0;
-    int32_t ne_6244 = 0;
-    int ret = 0;
-    
-    lock_lock(&ctx->lock);
-    worker_local = &ctx->scheduler.workers[0];
-    
-    struct memblock mem_out_7363;
-    
-    mem_out_7363.references = NULL;
-    
-    struct memblock flags_mem_7350;
-    
-    flags_mem_7350.references = NULL;
-    
-    struct memblock inp_mem_7349;
-    
-    inp_mem_7349.references = NULL;
-    inp_mem_7349 = in0->mem;
-    dz2081U_6241 = in0->shape[0];
-    flags_mem_7350 = in1->mem;
-    dz2081U_6241 = in1->shape[0];
-    ne_6244 = in2;
-    if (!(dz2081U_6241 == in0->shape[0] && dz2081U_6241 == in1->shape[0])) {
-        ret = 1;
-        set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
-    }
-    if (ret == 0) {
-        ret = futrts_entry_test_segscan(ctx, &mem_out_7363, inp_mem_7349, flags_mem_7350, dz2081U_6241, ne_6244);
-        if (ret == 0) {
-            assert((*out0 = (struct futhark_i32_1d *) malloc(sizeof(struct futhark_i32_1d))) != NULL);
-            (*out0)->mem = mem_out_7363;
-            (*out0)->shape[0] = dz2081U_6241;
+            *out0 = prim_out_5872;
+            *out1 = prim_out_5873;
         }
     }
     lock_unlock(&ctx->lock);

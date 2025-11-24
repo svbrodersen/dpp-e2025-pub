@@ -82,7 +82,22 @@ def main (abs_temp: f32) (samplerate: f32)
 
 -- ==
 -- entry: main
--- input { 0.5f32 0.1f32 10i64 10i64 2 } auto output
+-- nobench input { 0.5f32 0.1f32 10i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 100i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 1000i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10000i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 100000i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 100i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 1000i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10000i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 100000i64 2 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 10 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 100 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 1000 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 10000 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 100000 } auto output
+-- notest input { 0.5f32 0.1f32 10i64 10i64 1000000 } auto output
 
 -- The following definitions are for the visualisation and need not be modified.
 
