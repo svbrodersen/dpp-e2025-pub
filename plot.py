@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
+from dataclasses import dataclass
 
 import matplotlib
 # Set backend to Agg before importing pyplot to handle headless environments
@@ -11,15 +12,28 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
+# --- Configuration for backends ---
+@dataclass
+class Backend:
+    """Configuration for a single backend type."""
+    name: str           # Display name (e.g., "OpenCL", "Sequential C")
+    file_suffix: str    # File suffix (e.g., "opencl", "c")
+    color: str          # Plot color
+    marker: str         # Plot marker style
+    
+# Define all possible backends here - add/remove as needed
+AVAILABLE_BACKENDS = [
+    Backend(name="OpenCL", file_suffix="opencl", color='b', marker='o'),
+    Backend(name="Sequential C", file_suffix="c", color='g', marker='s'),
+    Backend(name="Multicore", file_suffix="multicore", color='r', marker='^'),
+    Backend(name="CUDA", file_suffix="cuda", color='m', marker='D'),
+    Backend(name="ISPC", file_suffix="ispc", color='c', marker='v'),
+]
+
+# Specify which backend to use as baseline for speedup calculations (typically the sequential one)
+BASELINE_BACKEND = "c"
+
 # --- Data Structure for Extracted Results ---
-# {
-#     'benchmark_name': {
-#         'sizes': np.ndarray[int],
-#         'opencl_runtimes': np.ndarray[float],
-#         'c_runtimes': np.ndarray[float],
-#         'speedups': np.ndarray[float],
-#     }
-# }
 BenchmarkResults = Dict[str, Dict[str, Any]]
 
 # --- Utility Functions ---
@@ -27,36 +41,40 @@ BenchmarkResults = Dict[str, Dict[str, Any]]
 def parse_arguments() -> argparse.Namespace:
     """Parses command line arguments."""
     parser = argparse.ArgumentParser(description="Plot all benchmark results from JSON files.")
-    parser.add_argument("progname", type=str, help="Base name of the program (e.g., 'mybench'). Files are expected to be <progname>-opencl.json and <progname>-c.json.")
+    parser.add_argument("progname", type=str, help="Base name of the program (e.g., 'mybench'). Files are expected to be <progname>-<backend>.json.")
     return parser.parse_args()
 
-def load_json(filepath: Path) -> Dict[str, Any]:
-    """Safely loads a JSON file."""
+def load_json(filepath: Path) -> Optional[Dict[str, Any]]:
+    """Safely loads a JSON file. Returns None if file doesn't exist."""
     try:
         with filepath.open('r') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"Error: File '{filepath}' not found.")
-        sys.exit(1)
+        return None
     except json.JSONDecodeError:
         print(f"Error: Failed to decode JSON from '{filepath}'.")
         sys.exit(1)
 
 # --- Core Data Extraction Logic ---
 
-def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, Any]) -> BenchmarkResults:
+def extract_all_benchmark_data(backend_data: Dict[str, Dict[str, Any]], 
+                                available_backends: List[str]) -> BenchmarkResults:
     """
-    Parses both JSON datasets to extract runtimes and calculate speedups
+    Parses all backend JSON datasets to extract runtimes and calculate speedups
     for ALL found benchmarks and data sizes.
+    
+    Args:
+        backend_data: Dictionary mapping backend suffix to loaded JSON data
+        available_backends: List of backend suffixes that were successfully loaded
     """
     all_results: BenchmarkResults = {}
     
-    # The structure key is '<program_name>.fut:<benchmark>'
-    for full_key, c_data_item in c_data.items():
-        if full_key not in opencl_data:
-            print(f"Warning: Key '{full_key}' found in C data but not OpenCL data. Skipping.")
-            continue
-        
+    # Use the first available backend as reference for benchmark names and sizes
+    reference_backend = available_backends[0]
+    reference_data = backend_data[reference_backend]
+    
+    # Iterate through all benchmark keys in reference data
+    for full_key, ref_data_item in reference_data.items():
         # 1. Extract benchmark name
         try:
             benchmark_name = full_key.split(':')[-1]
@@ -64,22 +82,14 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
             print(f"Warning: Unexpected key format '{full_key}'. Skipping.")
             continue
 
-        # 2. Extract sizes, C runtimes, and OpenCL runtimes
-        opencl_datasets = opencl_data[full_key]['datasets']
-        c_datasets = c_data_item['datasets']
-
+        # 2. Extract sizes and runtimes for each backend
+        ref_datasets = ref_data_item['datasets']
+        
         sizes: List[int] = []
-        opencl_runtimes: List[float] = []
-        c_runtimes: List[float] = []
+        backend_runtimes: Dict[str, List[float]] = {backend: [] for backend in available_backends}
 
         # Iterate over all dataset keys (e.g., '[1024]i32 [1024]i32')
-        for dataset_key, c_dataset in c_datasets.items():
-            if dataset_key not in opencl_datasets:
-                print(f"Warning: Dataset key '{dataset_key}' for benchmark '{benchmark_name}' missing in OpenCL data. Skipping.")
-                continue
-
-            opencl_dataset = opencl_datasets[dataset_key]
-            
+        for dataset_key, ref_dataset in ref_datasets.items():
             # Extract size N from the dataset_key
             try:
                 size_str = dataset_key.split(']')[0].split('[')[1]
@@ -88,17 +98,37 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
                 print(f"Warning: Could not parse size from dataset key '{dataset_key}'. Skipping.")
                 continue
             
-            try:
-                # Calculate mean runtime in milliseconds
-                avg_c_ms = np.mean(c_dataset['runtimes']) / 1000.0
-                avg_opencl_ms = np.mean(opencl_dataset['runtimes']) / 1000.0
-            except KeyError as e:
-                print(f"Error extracting runtimes for '{benchmark_name}' at size {size_n}: Key {e} not found. Skipping.")
+            # Check if this dataset exists in all backends and extract runtimes
+            all_backends_have_data = True
+            temp_runtimes = {}
+            
+            for backend_suffix in available_backends:
+                if full_key not in backend_data[backend_suffix]:
+                    all_backends_have_data = False
+                    break
+                    
+                backend_datasets = backend_data[backend_suffix][full_key]['datasets']
+                if dataset_key not in backend_datasets:
+                    all_backends_have_data = False
+                    break
+                
+                try:
+                    # Calculate mean runtime in milliseconds
+                    avg_ms = np.mean(backend_datasets[dataset_key]['runtimes']) / 1000.0
+                    temp_runtimes[backend_suffix] = avg_ms
+                except KeyError as e:
+                    print(f"Error extracting runtimes for '{benchmark_name}' at size {size_n}: Key {e} not found. Skipping.")
+                    all_backends_have_data = False
+                    break
+            
+            if not all_backends_have_data:
+                print(f"Warning: Dataset '{dataset_key}' for benchmark '{benchmark_name}' missing in some backends. Skipping this size.")
                 continue
-
+            
+            # All backends have this data point
             sizes.append(size_n)
-            c_runtimes.append(avg_c_ms)
-            opencl_runtimes.append(avg_opencl_ms)
+            for backend_suffix, runtime in temp_runtimes.items():
+                backend_runtimes[backend_suffix].append(runtime)
             
         # 3. Process collected data
         if not sizes:
@@ -107,36 +137,48 @@ def extract_all_benchmark_data(opencl_data: Dict[str, Any], c_data: Dict[str, An
         # Sort data by size
         sorted_indices = np.argsort(sizes)
         
-        np_sizes = np.array(sizes)[sorted_indices]
-        np_c_times = np.array(c_runtimes)[sorted_indices]
-        np_opencl_times = np.array(opencl_runtimes)[sorted_indices]
-        np_speedups = np_c_times / np_opencl_times
+        result_dict = {
+            'sizes': np.array(sizes)[sorted_indices],
+        }
+        
+        # Store runtimes for each backend
+        for backend_suffix in available_backends:
+            result_dict[f'{backend_suffix}_runtimes'] = np.array(backend_runtimes[backend_suffix])[sorted_indices]
+        
+        # Calculate speedups relative to baseline
+        if BASELINE_BACKEND in available_backends:
+            baseline_times = result_dict[f'{BASELINE_BACKEND}_runtimes']
+            for backend_suffix in available_backends:
+                if backend_suffix != BASELINE_BACKEND:
+                    backend_times = result_dict[f'{backend_suffix}_runtimes']
+                    result_dict[f'{backend_suffix}_speedups'] = baseline_times / backend_times
 
         # 4. Store results
-        all_results[benchmark_name] = {
-            'sizes': np_sizes,
-            'opencl_runtimes': np_opencl_times,
-            'c_runtimes': np_c_times,
-            'speedups': np_speedups,
-        }
+        all_results[benchmark_name] = result_dict
 
     return all_results
 
 # --- Plotting Functions ---
 
-def create_plot(sizes: np.ndarray,
-                opencl_times: np.ndarray,
-                c_times: np.ndarray,
-                speedups: np.ndarray,
-                benchmark_name: str,
+def create_plot(benchmark_name: str,
+                data: Dict[str, Any],
+                available_backends: List[Backend],
                 output_file: str):
     """Generates and saves the individual matplotlib figure."""
+    
+    sizes = data['sizes']
     
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # --- Plot 1: Runtimes (Left Axis) ---
-    p1 = ax1.plot(sizes, opencl_times, 'b-o', label='OpenCL runtime')
-    p2 = ax1.plot(sizes, c_times, 'g-s', label='Sequential runtime')
+    plots = []
+    for backend in available_backends:
+        runtime_key = f'{backend.file_suffix}_runtimes'
+        if runtime_key in data:
+            p = ax1.plot(sizes, data[runtime_key], 
+                        f'{backend.color}-{backend.marker}', 
+                        label=f'{backend.name} runtime')
+            plots.extend(p)
     
     ax1.set_xlabel('Input size')
     ax1.set_ylabel('Runtime (ms)', color='k')
@@ -151,13 +193,19 @@ def create_plot(sizes: np.ndarray,
 
     # --- Plot 2: Speedup (Right Axis) ---
     ax2 = ax1.twinx()
-    p3 = ax2.plot(sizes, speedups, 'k-x', label='OpenCL speedup')
+    for backend in available_backends:
+        speedup_key = f'{backend.file_suffix}_speedups'
+        if speedup_key in data:
+            p = ax2.plot(sizes, data[speedup_key], 
+                        f'k-{backend.marker}', 
+                        label=f'{backend.name} speedup',
+                        alpha=0.7)
+            plots.extend(p)
     
     ax2.set_ylabel('Speedup (x)', color='k')
     ax2.tick_params(axis='y', labelcolor='k')
 
     # --- Legend & Layout ---
-    plots = p1 + p2 + p3
     labels = [p.get_label() for p in plots]
     ax1.legend(plots, labels, loc='best')
 
@@ -169,17 +217,19 @@ def create_plot(sizes: np.ndarray,
     plt.close(fig)
 
 def create_combined_metric_plot(all_results: BenchmarkResults, 
-                                metric_key: str, 
+                                backend: Backend,
                                 output_file: str):
     """
     Generates a single plot containing lines for ALL benchmarks 
-    for a specific metric (e.g., 'opencl_runtimes' or 'c_runtimes').
+    for a specific backend's runtimes.
     """
     fig, ax = plt.subplots(figsize=(12, 8))
     
+    metric_key = f'{backend.file_suffix}_runtimes'
+    
     # Iterate through all benchmarks and plot them on the same axis
     for benchmark_name, data in all_results.items():
-        if data['sizes'].size > 0:
+        if metric_key in data and data['sizes'].size > 0:
             ax.plot(data['sizes'], 
                     data[metric_key], 
                     marker='o', 
@@ -188,10 +238,7 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
 
     ax.set_xlabel('Input size')
     ax.set_ylabel('Runtime (ms)')
-    
-    # Clean title based on key
-    title_str = "OpenCL" if "opencl" in metric_key else "Sequential C"
-    ax.set_title(f'Combined {title_str} Runtimes - All Benchmarks')
+    ax.set_title(f'Combined {backend.name} Runtimes - All Benchmarks')
     
     # Add legend
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -207,39 +254,58 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
 def main():
     args = parse_arguments()
 
-    # 1. File definitions
-    opencl_path = Path(f'{args.progname}-opencl.json')
-    c_path = Path(f'{args.progname}-c.json')
+    # 1. Load data for all available backends
+    backend_data = {}
+    available_backends = []
     
-    # 2. Load Data
-    opencl_data = load_json(opencl_path)
-    c_data = load_json(c_path)
+    for backend in AVAILABLE_BACKENDS:
+        filepath = Path(f'{args.progname}-{backend.file_suffix}.json')
+        data = load_json(filepath)
+        if data is not None:
+            backend_data[backend.file_suffix] = data
+            available_backends.append(backend.file_suffix)
+            print(f"Loaded data for backend: {backend.name}")
+        else:
+            print(f"Backend '{backend.name}' data file not found. Skipping this backend.")
+    
+    if not available_backends:
+        print("Error: No backend data files found. Exiting.")
+        sys.exit(1)
+    
+    # Check if baseline backend is available
+    if BASELINE_BACKEND not in available_backends:
+        print(f"Warning: Baseline backend '{BASELINE_BACKEND}' not found. Speedup calculations will be skipped.")
 
-    # 3. Extract Results
-    all_results = extract_all_benchmark_data(opencl_data, c_data)
+    # 2. Extract Results
+    all_results = extract_all_benchmark_data(backend_data, available_backends)
     
     if not all_results:
         print("No complete benchmark data found to plot. Exiting.")
         sys.exit(0)
 
-    # 4. Plot Individual Results
+    # Get Backend objects for available backends
+    available_backend_objs = [b for b in AVAILABLE_BACKENDS if b.file_suffix in available_backends]
+
+    # 3. Plot Individual Results
     for benchmark_name, data in all_results.items():
         if data['sizes'].size > 0:
             create_plot(
-                sizes=data['sizes'],
-                opencl_times=data['opencl_runtimes'],
-                c_times=data['c_runtimes'],
-                speedups=data['speedups'],
                 benchmark_name=benchmark_name,
+                data=data,
+                available_backends=available_backend_objs,
                 output_file=f'{benchmark_name}.pdf'
             )
         else:
             print(f"Warning: No valid data points to plot for benchmark '{benchmark_name}'.")
 
-    # 5. Plot Combined Results (New Functionality)
+    # 4. Plot Combined Results for each backend
     print("Generating combined plots...")
-    create_combined_metric_plot(all_results, 'opencl_runtimes', 'combined-opencl.pdf')
-    create_combined_metric_plot(all_results, 'c_runtimes', 'combined-c.pdf')
+    for backend in available_backend_objs:
+        create_combined_metric_plot(
+            all_results, 
+            backend, 
+            f'combined-{backend.file_suffix}.pdf'
+        )
 
 if __name__ == '__main__':
     main()

@@ -41,7 +41,6 @@ entry test_process = process
 -- notest random input { [100000]i32 [100000]i32 }
 -- notest random input { [1000000]i32 [1000000]i32 }
 -- notest random input { [10000000]i32 [10000000]i32 }
-
 entry test_process_idx = process_idx
 
 
