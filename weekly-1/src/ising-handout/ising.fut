@@ -32,7 +32,10 @@ def random_grid (seed: i32) (h: i64) (w: i64)
               : ([h][w]rng_engine.rng, [h][w]spin) =
   let initial = rng_engine.rng_from_seed [seed]
   let states_flat = rng_engine.split_rng (h * w) initial
-  let (new_states, spins) = map (\r -> rand_i8.rand (-1i8, 1i8) r) states_flat |> unzip
+  let (new_states, spins) = map (\r -> 
+    let (r, i) = rand_i8.rand (0, 1i8) r
+    in if i == 0 then (r, -1) else (r, i)
+    ) states_flat |> unzip
   in (unflatten new_states, unflatten spins)
 
 
