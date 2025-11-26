@@ -24,7 +24,7 @@ def segreduce [n] 't (op: t -> t -> t) (ne: t)
 
 -- Segmented scan tests
 -- ==
--- entry: mine_segscan
+-- entry: test_segscan
 -- nobench input { [1i32, 2i32, 3i32, 4i32, 5i32] 
 --         [false, false, true, false, false] 
 --         0i32 }
@@ -44,7 +44,7 @@ def segreduce [n] 't (op: t -> t -> t) (ne: t)
 entry test_segscan (inp: []i32) (flags: []bool) (ne: i32)  = segscan (+) ne (zip inp flags)
 
 -- ==
--- entry: mine_segreduce
+-- entry: test_segreduce
 -- nobench input { [1i32, 2i32, 3i32, 4i32, 5i32]
 --         [false, false, true, false, false]
 --         0i32 }
