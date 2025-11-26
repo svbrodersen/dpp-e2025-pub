@@ -1,4 +1,5 @@
-GIT_ROOT := $(shell git rev-parse --show-toplevel)
+
+GIT_ROOT:=$(shell git rev-parse --show-toplevel)
 
 ex1-opencl.json: main.fut
 	futhark bench --backend=opencl \
@@ -12,6 +13,6 @@ ex1-c.json: main.fut
 
 clean: 
 	rm -rf ./main ./main.c ./data ./*.json
-
+	
 plot:
-	python $(GIT_ROOT)/plot.py prefix 10 10
+	python $(GIT_ROOT)/plot.py prefix 2 10

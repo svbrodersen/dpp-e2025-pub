@@ -42,6 +42,8 @@ def parse_arguments() -> argparse.Namespace:
     """Parses command line arguments."""
     parser = argparse.ArgumentParser(description="Plot all benchmark results from JSON files.")
     parser.add_argument("progname", type=str, help="Base name of the program (e.g., 'mybench'). Files are expected to be <progname>-<backend>.json.")
+    parser.add_argument("xbase", type=int, help="Base number for the x-axis")
+    parser.add_argument("ybase", type=int, help="Base number for the x-axis")
     return parser.parse_args()
 
 def load_json(filepath: Path) -> Optional[Dict[str, Any]]:
@@ -163,7 +165,9 @@ def extract_all_benchmark_data(backend_data: Dict[str, Dict[str, Any]],
 def create_plot(benchmark_name: str,
                 data: Dict[str, Any],
                 available_backends: List[Backend],
-                output_file: str):
+                output_file: str,
+                xbase: int = 10,
+                ybase: int = 10):
     """Generates and saves the individual matplotlib figure."""
     
     sizes = data['sizes']
@@ -188,8 +192,8 @@ def create_plot(benchmark_name: str,
     ax1.set_xticks(sizes)
     ax1.set_xticklabels(sizes, rotation='vertical')
     
-    ax1.set_xscale('log', base=2)
-    ax1.set_yscale('log', base=10)
+    ax1.set_xscale('log', base=xbase)
+    ax1.set_yscale('log', base=ybase)
 
     # --- Plot 2: Speedup (Right Axis) ---
     ax2 = ax1.twinx()
@@ -293,7 +297,9 @@ def main():
                 benchmark_name=benchmark_name,
                 data=data,
                 available_backends=available_backend_objs,
-                output_file=f'{benchmark_name}.pdf'
+                output_file=f'{benchmark_name}.png',
+                xbase=args.xbase,
+                ybase=args.ybase,
             )
         else:
             print(f"Warning: No valid data points to plot for benchmark '{benchmark_name}'.")
@@ -304,7 +310,7 @@ def main():
         create_combined_metric_plot(
             all_results, 
             backend, 
-            f'combined-{backend.file_suffix}.pdf'
+            f'combined-{backend.file_suffix}.png'
         )
 
 if __name__ == '__main__':
