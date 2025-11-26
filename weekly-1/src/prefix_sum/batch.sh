@@ -1,6 +1,6 @@
 #!/bin/bash
 # normal cpu stuff: allocate cpus, memory
-#SBATCH --ntasks=1 --cpus-per-task=1 --mem=6000M
+#SBATCH --ntasks=1 --cpus-per-task=5 --mem=6000M
 # we run on the gpu partition and we allocate 2 titanx gpus
 #SBATCH -p gpu --gres=gpu:titanrtx:1
 #We expect that our program should not run longer than 4 hours

@@ -31,6 +31,7 @@ def work_efficient [n] (xs: [n]i32) : [n]i32 =
       let all_vals = left_vals ++ right_vals
       in scatter xs all_idxs all_vals
   in downswept
+
 -- Hillis test
 -- ==
 -- entry: test_hillis
@@ -89,3 +90,26 @@ entry test_hillis = hillis_steele
 -- notest random input { [67108864]i32 }
 -- notest random input { [134217728]i32 }
 entry test_efficient = work_efficient
+
+-- Built in scan
+-- ==
+-- entry: test_scan
+-- notest random input { [1024]i32 }
+-- notest random input { [2048]i32 }
+-- notest random input { [4096]i32 }
+-- notest random input { [8192]i32 }
+-- notest random input { [16384]i32 }
+-- notest random input { [32768]i32 }
+-- notest random input { [65536]i32 }
+-- notest random input { [131072]i32 }
+-- notest random input { [262144]i32 }
+-- notest random input { [524288]i32 }
+-- notest random input { [1048576]i32 }
+-- notest random input { [2097152]i32 }
+-- notest random input { [4194304]i32 }
+-- notest random input { [8388608]i32 }
+-- notest random input { [16777216]i32 }
+-- notest random input { [33554432]i32 }
+-- notest random input { [67108864]i32 }
+-- notest random input { [134217728]i32 }
+entry test_scan = scan (+) 0 

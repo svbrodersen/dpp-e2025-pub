@@ -1,0 +1,119 @@
+hendrixgpu11fl.unicph.domain
+0
+Compiling segment.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+segment.fut:mine_segscan (no tuning file):
+
+segment.fut:mine_segreduce (no tuning file):
+
+segment.fut:bench_segscan (no tuning file):
+[100]i32 [100]bool:                               21μs (95% CI: [      21.1,       21.2])
+[1000]i32 [1000]bool:                             21μs (95% CI: [      21.3,       21.9])
+[10000]i32 [10000]bool:                           23μs (95% CI: [      22.5,       22.7])
+[100000]i32 [100000]bool:                         26μs (95% CI: [      25.6,       25.7])
+[1000000]i32 [1000000]bool:                       63μs (95% CI: [      63.1,       63.3])
+[10000000]i32 [10000000]bool:                    527μs (95% CI: [     526.6,      527.0])
+
+segment.fut:bench_scan (no tuning file):
+[100]i32:                                         17μs (95% CI: [      16.8,       16.9])
+[1000]i32:                                        24μs (95% CI: [      23.5,       23.6])
+[10000]i32:                                       22μs (95% CI: [      22.0,       22.1])
+[100000]i32:                                      22μs (95% CI: [      22.3,       22.4])
+[1000000]i32:                                     52μs (95% CI: [      52.3,       52.7])
+[10000000]i32:                                   341μs (95% CI: [     341.0,      341.6])
+
+segment.fut:bench_segreduce (no tuning file):
+[100]i32 [100]bool:                               66μs (95% CI: [      65.4,       66.4])
+[1000]i32 [1000]bool:                             65μs (95% CI: [      64.4,       64.8])
+[10000]i32 [10000]bool:                           67μs (95% CI: [      66.7,       67.3])
+[100000]i32 [100000]bool:                         84μs (95% CI: [      83.7,       84.2])
+[1000000]i32 [1000000]bool:                      259μs (95% CI: [     258.5,      259.9])
+[10000000]i32 [10000000]bool:                   1713μs (95% CI: [    1710.8,     1714.7])
+
+segment.fut:bench_reduce (no tuning file):
+[100]i32:                                         22μs (95% CI: [      22.1,       22.2])
+[1000]i32:                                        21μs (95% CI: [      20.6,       20.7])
+[10000]i32:                                       18μs (95% CI: [      17.5,       17.6])
+[100000]i32:                                      22μs (95% CI: [      22.3,       22.4])
+[1000000]i32:                                     26μs (95% CI: [      25.9,       26.0])
+[10000000]i32:                                    84μs (95% CI: [      84.0,       84.2])
+Compiling segment.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+segment.fut:mine_segscan (no tuning file):
+
+segment.fut:mine_segreduce (no tuning file):
+
+segment.fut:bench_segscan (no tuning file):
+[100]i32 [100]bool:                                0μs (95% CI: [       0.2,        0.2])
+[1000]i32 [1000]bool:                              1μs (95% CI: [       1.5,        1.5])
+[10000]i32 [10000]bool:                           37μs (95% CI: [      36.8,       36.9])
+[100000]i32 [100000]bool:                        443μs (95% CI: [     443.3,      443.6])
+[1000000]i32 [1000000]bool:                     4338μs (95% CI: [    4333.9,     4343.4])
+[10000000]i32 [10000000]bool:                  43048μs (95% CI: [   42997.4,    43108.9])
+
+segment.fut:bench_scan (no tuning file):
+[100]i32:                                          0μs (95% CI: [       0.1,        0.2])
+[1000]i32:                                         1μs (95% CI: [       0.7,        0.7])
+[10000]i32:                                        7μs (95% CI: [       7.1,        7.1])
+[100000]i32:                                      46μs (95% CI: [      46.3,       46.4])
+[1000000]i32:                                    465μs (95% CI: [     464.0,      465.2])
+[10000000]i32:                                  6830μs (95% CI: [    6799.7,     6859.3])
+
+segment.fut:bench_segreduce (no tuning file):
+[100]i32 [100]bool:                                1μs (95% CI: [       0.5,        0.5])
+[1000]i32 [1000]bool:                              3μs (95% CI: [       3.2,        3.2])
+[10000]i32 [10000]bool:                           96μs (95% CI: [      96.3,       96.4])
+[100000]i32 [100000]bool:                       1024μs (95% CI: [    1022.9,     1024.1])
+[1000000]i32 [1000000]bool:                    14056μs (95% CI: [   14036.6,    14098.9])
+[10000000]i32 [10000000]bool:                 139885μs (95% CI: [  139785.2,   139981.8])
+
+segment.fut:bench_reduce (no tuning file):
+[100]i32:                                          0μs (95% CI: [       0.1,        0.1])
+[1000]i32:                                         1μs (95% CI: [       0.7,        0.7])
+[10000]i32:                                        4μs (95% CI: [       4.1,        4.1])
+[100000]i32:                                      40μs (95% CI: [      40.2,       40.3])
+[1000000]i32:                                    404μs (95% CI: [     403.8,      404.2])
+[10000000]i32:                                  4826μs (95% CI: [    4823.6,     4829.2])
+Compiling segment.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+segment.fut:mine_segscan (no tuning file):
+
+segment.fut:mine_segreduce (no tuning file):
+
+segment.fut:bench_segscan (no tuning file):
+[100]i32 [100]bool:                                1μs (95% CI: [       0.5,        0.5])
+[1000]i32 [1000]bool:                              2μs (95% CI: [       2.0,        2.1])
+[10000]i32 [10000]bool:                           40μs (95% CI: [      39.4,       40.1])
+[100000]i32 [100000]bool:                        496μs (95% CI: [     488.8,      503.6])
+[1000000]i32 [1000000]bool:                     2232μs (95% CI: [    2199.7,     2277.3])
+[10000000]i32 [10000000]bool:                  17436μs (95% CI: [   17152.5,    17779.2])
+
+segment.fut:bench_scan (no tuning file):
+[100]i32:                                          0μs (95% CI: [       0.3,        0.3])
+[1000]i32:                                         1μs (95% CI: [       1.0,        1.1])
+[10000]i32:                                        7μs (95% CI: [       6.9,        6.9])
+[100000]i32:                                     143μs (95% CI: [     138.4,      148.1])
+[1000000]i32:                                    554μs (95% CI: [     545.7,      561.8])
+[10000000]i32:                                  3946μs (95% CI: [    3910.2,     3985.6])
+
+segment.fut:bench_segreduce (no tuning file):
+[100]i32 [100]bool:                                1μs (95% CI: [       1.1,        1.1])
+[1000]i32 [1000]bool:                              8μs (95% CI: [       8.4,        8.4])
+[10000]i32 [10000]bool:                          131μs (95% CI: [     127.7,      134.9])
+[100000]i32 [100000]bool:                       1027μs (95% CI: [    1009.4,     1044.9])
+[1000000]i32 [1000000]bool:                     7681μs (95% CI: [    7589.5,     7775.8])
+[10000000]i32 [10000000]bool:                  49587μs (95% CI: [   49076.0,    50408.6])
+
+segment.fut:bench_reduce (no tuning file):
+[100]i32:                                          0μs (95% CI: [       0.2,        0.2])
+[1000]i32:                                         1μs (95% CI: [       0.9,        1.0])
+[10000]i32:                                        4μs (95% CI: [       4.3,        4.4])
+[100000]i32:                                      69μs (95% CI: [      67.3,       71.3])
+[1000000]i32:                                    292μs (95% CI: [     288.0,      295.8])
+[10000000]i32:                                  1732μs (95% CI: [    1712.3,     1752.9])

@@ -1,0 +1,59 @@
+hendrixgpu20fl.unicph.domain
+0
+Compiling main.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+main.fut:test_process (no tuning file):
+[100]i32 [100]i32:                                18μs (95% CI: [      18.2,       18.3])
+[1000]i32 [1000]i32:                              18μs (95% CI: [      18.3,       18.5])
+[10000]i32 [10000]i32:                            19μs (95% CI: [      19.1,       19.3])
+[100000]i32 [100000]i32:                          24μs (95% CI: [      23.7,       23.8])
+[1000000]i32 [1000000]i32:                        33μs (95% CI: [      33.0,       33.2])
+[10000000]i32 [10000000]i32:                     145μs (95% CI: [     144.8,      145.0])
+
+main.fut:test_process_idx (no tuning file):
+[100]i32 [100]i32:                                29μs (95% CI: [      29.1,       29.6])
+[1000]i32 [1000]i32:                              35μs (95% CI: [      35.3,       35.4])
+[10000]i32 [10000]i32:                            35μs (95% CI: [      35.3,       35.4])
+[100000]i32 [100000]i32:                          33μs (95% CI: [      33.3,       33.4])
+[1000000]i32 [1000000]i32:                        43μs (95% CI: [      43.0,       43.1])
+[10000000]i32 [10000000]i32:                     154μs (95% CI: [     153.9,      154.2])
+Compiling main.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+main.fut:test_process (no tuning file):
+[100]i32 [100]i32:                                 0μs (95% CI: [       0.1,        0.1])
+[1000]i32 [1000]i32:                               0μs (95% CI: [       0.4,        0.4])
+[10000]i32 [10000]i32:                             3μs (95% CI: [       2.7,        2.7])
+[100000]i32 [100000]i32:                          31μs (95% CI: [      31.0,       31.1])
+[1000000]i32 [1000000]i32:                       332μs (95% CI: [     331.1,      332.2])
+[10000000]i32 [10000000]i32:                    6936μs (95% CI: [    6921.6,     6950.9])
+
+main.fut:test_process_idx (no tuning file):
+[100]i32 [100]i32:                                 0μs (95% CI: [       0.2,        0.2])
+[1000]i32 [1000]i32:                               1μs (95% CI: [       1.1,        1.1])
+[10000]i32 [10000]i32:                            13μs (95% CI: [      12.5,       12.6])
+[100000]i32 [100000]i32:                         108μs (95% CI: [     108.4,      108.6])
+[1000000]i32 [1000000]i32:                      1152μs (95% CI: [    1146.2,     1157.6])
+[10000000]i32 [10000000]i32:                   12009μs (95% CI: [   11945.6,    12091.4])
+Compiling main.fut...
+Reporting arithmetic mean runtime of at least 10 runs for each dataset (min 0.5s).
+More runs automatically performed for up to 300s to ensure accurate measurement.
+
+main.fut:test_process (no tuning file):
+[100]i32 [100]i32:                                 0μs (95% CI: [       0.3,        0.4])
+[1000]i32 [1000]i32:                               1μs (95% CI: [       0.7,        0.7])
+[10000]i32 [10000]i32:                             4μs (95% CI: [       4.2,        4.3])
+[100000]i32 [100000]i32:                          69μs (95% CI: [      66.2,       71.6])
+[1000000]i32 [1000000]i32:                       278μs (95% CI: [     273.3,      283.3])
+[10000000]i32 [10000000]i32:                    3283μs (95% CI: [    3241.1,     3325.1])
+
+main.fut:test_process_idx (no tuning file):
+[100]i32 [100]i32:                                 0μs (95% CI: [       0.4,        0.4])
+[1000]i32 [1000]i32:                               1μs (95% CI: [       1.2,        1.2])
+[10000]i32 [10000]i32:                            12μs (95% CI: [      12.0,       12.0])
+[100000]i32 [100000]i32:                         129μs (95% CI: [     125.4,      132.5])
+[1000000]i32 [1000000]i32:                       624μs (95% CI: [     615.9,      632.1])
+[10000000]i32 [10000000]i32:                    4559μs (95% CI: [    4503.6,     4618.6])
