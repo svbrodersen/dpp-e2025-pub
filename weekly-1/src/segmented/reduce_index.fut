@@ -29,21 +29,21 @@ entry test_reduce dest is vs =
 	in foldl (||) false <| map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
 
 -- ==
--- entry: bench_custom
+-- entry: bench_custom_reduce_idx
 -- notest random input { [100]i32 [1000]i64 [1000]i32 }
 -- notest random input { [1000]i32 [10000]i64 [10000]i32 }
 -- notest random input { [10000]i32 [100000]i64 [100000]i32 }
 -- notest random input { [100000]i32 [1000000]i64 [1000000]i32 }
 -- notest random input { [1000000]i32 [10000000]i64 [10000000]i32 }
 -- notest random input { [10000000]i32 [100000000]i64 [100000000]i32 }
-entry bench_custom (dest: *[]i32) is vs = custom_reduce_by_index dest (+) 0i32 is vs 
+entry bench_custom_reduce_idx (dest: *[]i32) is vs = custom_reduce_by_index dest (+) 0i32 is vs 
 
 -- ==
--- entry: bench_reduce
+-- entry: bench_reduce_idx
 -- notest random input { [100]i32 [1000]i64 [1000]i32 }
 -- notest random input { [1000]i32 [10000]i64 [10000]i32 }
 -- notest random input { [10000]i32 [100000]i64 [100000]i32 }
 -- notest random input { [100000]i32 [1000000]i64 [1000000]i32 }
 -- notest random input { [1000000]i32 [10000000]i64 [10000000]i32 }
 -- notest random input { [10000000]i32 [100000000]i64 [100000000]i32 }
-entry bench_reduce (dest: *[]i32) is vs = custom_reduce_by_index dest (+) 0i32 is vs 
+entry bench_reduce_idx (dest: *[]i32) is vs = custom_reduce_by_index dest (+) 0i32 is vs 
