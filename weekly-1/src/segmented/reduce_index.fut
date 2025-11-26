@@ -46,4 +46,4 @@ entry bench_custom_reduce_idx (dest: *[]i32) is vs = custom_reduce_by_index dest
 -- notest random input { [100000]i32 [1000000]i64 [1000000]i32 }
 -- notest random input { [1000000]i32 [10000000]i64 [10000000]i32 }
 -- notest random input { [10000000]i32 [100000000]i64 [100000000]i32 }
-entry bench_reduce_idx (dest: *[]i32) is vs = custom_reduce_by_index dest (+) 0i32 is vs 
+entry bench_reduce_idx (dest: *[]i32) is vs = reduce_by_index dest (+) 0i32 is vs 
