@@ -30,7 +30,13 @@ the batch jobs were run on, but if we assume these are the same as the default
 ssh machine, then it is: Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz. Each task is
 also run with 5 CPUS assigned and only a single GPU.
 
-Further, whenever there is a speedup graph line, this is in reference to the baseline Sequential C runtime.
+Further, whenever there is a speedup graph line, this is in reference to the
+baseline Sequential C runtime.
+
+The programs can be run by entering the specific folders and running futhark
+test <program\_file>.fut or for benchmarking running futhark bench
+--backend=<desired backend> <program\_file>.fut. The batch scripts used to
+generate the graphs are also provided.
 
 \input{sections/ex1.tex}
 \input{sections/ex2.tex}
