@@ -271,6 +271,7 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
     
     fig.tight_layout()
+    plt.autoscale(enable=True, axis='both', tight=True)
     
     print(f"Saving combined plot to {output_file}...")
     plt.savefig(output_file, bbox_inches='tight')
@@ -320,7 +321,7 @@ def main():
                 benchmark_name=benchmark_name,
                 data=data,
                 available_backends=available_backend_objs,
-                output_file=f'{benchmark_name}.png',
+                output_file=f'{args.progname}-{benchmark_name}.png',
                 xbase=args.xbase,
                 ybase=args.ybase,
             )

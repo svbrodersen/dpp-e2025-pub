@@ -74,8 +74,12 @@ The implementation for the reduce by index can be seen below:
 def custom_reduce_by_index 'a [m] [n]  (dest: *[m]a)
                                 (f: a -> a -> a) (ne: a)
                                 (is: [n]i64) (as: [n]a) : *[m]a =
-  let (sorted_is, sorted_as) = radix_sort_int_by_key (\(i, _) -> i) i64.num_bits i64.get_bit (zip is as)
-                               |> unzip
+  let (sorted_is, sorted_as) = radix_sort_int_by_key 
+                                (\(i, _) -> i) 
+                                i64.num_bits 
+                                i64.get_bit 
+                                (zip is as)
+                                |> unzip
   let prev_is = rotate (-1) sorted_is
   let flag_array = map2 (\i_curr i_prev -> i_curr != i_prev) sorted_is prev_is
   let seg_res = zip sorted_as flag_array |> segreduce f ne
@@ -102,25 +106,29 @@ The implementation was tested as follows:
 -- entry: test_reduce
 -- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64] [10, 10, 10, 10] }
 -- output { true }
--- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64, 2i64] [10, 10, 10, 10, 10] }
+-- nobench input { [0,0,0] 
+--                 [0i64, 1i64, 1i64, 2i64, 2i64] [10, 10, 10, 10, 10] }
 -- output { true }
--- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64, 2i64] [10, 20, 30, 40, 50] }
+-- nobench input { [0,0,0] 
+--                 [0i64, 1i64, 1i64, 2i64, 2i64] [10, 20, 30, 40, 50] }
 -- output { true }
 entry test_reduce dest is vs = 
 	let builtin = reduce_by_index (copy dest) (+) 0i32 is vs
 	let custom = custom_reduce_by_index (copy dest) (+) 0i32 is vs
-	in foldl (||) false <| map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
+	in foldl (||) false <| 
+     map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
 \end{lstlisting}
 And we seem to get the same result as the default implementation in these cases.
 
 \subsubsection{Discussion and benchmarking}
 \begin{figure}
   \begin{center}
-    \includegraphics[width=0.95\textwidth]{../../src/segmented/combined-opencl.png}
+    \includegraphics[width=0.95\textwidth]{../src/segmented/reduce_index-combined-opencl.png}
   \end{center}
   \caption{Benchmarking results for the reduce function}\label{fig:reduce_by_index}
 \end{figure}
-The benchmarking can be seen in Figure~\ref{fig:reduce_by_index}
+The benchmarking can be seen in Figure~\ref{fig:reduce_by_index}  . 
+% TODO: Not done
 
 
 % section Segmented operations (end)
