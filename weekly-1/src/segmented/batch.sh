@@ -13,9 +13,7 @@ echo $CUDA_VISIBLE_DEVICES
 futhark bench --backend=opencl \
 	--json segment-opencl.json \
 	segment.fut
-futhark bench --backend=c \
-	--json segment-c.json \
-	segment.fut
-futhark bench --backend=multicore \
-	--json segment-multicore.json \
-	segment.fut
+
+futhark bench --backend=opencl \
+	--json reduce_index-opencl.json \
+	reduce_index.fut
