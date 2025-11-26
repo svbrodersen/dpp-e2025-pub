@@ -1,0 +1,126 @@
+\section{Segmented operations}\label{sec:segmented_operations} % (fold)
+\subsection{Proof}\label{sub:proof} % (fold)
+We have:
+\begin{align}
+  (0,false) \oplus' (v_2, f_2) &= (if false then v_2 else 0 \oplus v_2, f_1 \lor f_2)\\
+                                    &= (0 \oplus v_2, f_1) \\
+                                    &= (v_2, f_1)
+\end{align}
+As such, (0,false) is indeed the neutral element as 0 is the neutral element of $\oplus$
+% subsection Proof (end)
+
+\subsection{Segmented scans and reductions}\label{sub:segmented_scans_and_reductions} % (fold)
+The implementation of both the segmented scan and reduction can be seen below:
+\begin{lstlisting}[language={futhark}]
+def segscan [n] 't (op: t -> t -> t) (ne: t) 
+                   (arr: [n](t, bool)): [n]t = 
+  let (res, _) = scan (\(v1, f1) (v2, f2) -> 
+                        (if f2 then v2 else op v1 v2, f1 || f2)
+                      ) (ne, false) arr 
+                      |> unzip
+  in res
+
+def segreduce [n] 't (op: t -> t -> t) (ne: t) 
+                     (arr: [n](t, bool)): []t = 
+  let res = segscan op ne arr
+  let (_, flags) = unzip arr
+  -- exclusive scan 
+  let keep = map (\i ->
+    if i == n-1 then 1
+    else if flags[i + 1] then 1 
+    else 0
+  ) (iota n)
+  let offsets1 = scan (+) 0 keep
+  in if (length offsets1) == 0
+    then []
+    else scatter (replicate (last offsets1) ne) 
+                 (map2 (\i k -> if k == 1 then i-1 else -1) offsets1 keep) res
+\end{lstlisting}
+
+The segmented scan works by simply calling scan on our new found neutral
+element. 
+
+The segreduce works by calling the segscan function, and then finding all the
+items that we wish to keep. These are the items for which the next item is a
+start of an array. These are all the elements at the end of our segments. Then
+we can scan the keep array, which contains a 0 if we do not want to keep the
+item and a 1 if we wish to keep it, which gives us the offset into the final
+array of each of the keep elements. At last, we have to check if there are no
+elements we wish to keep in which case we simply return the empty array and
+otherwise we scatter into any array where we substitute all 0s with -1 (in this
+case it is instantiated with the neutral element, but as we overwrite each
+element this is not technically necessary.). This works because the builtin
+scatter function simply ignores all the -1 elements.
+
+\subsection{Benchmarking}\label{sub:benchmarking} % (fold)
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{../src/segmented/combined-opencl.png}
+  \end{center}
+  \caption{Benchmarking of the Segmented scan and reduce functions.}\label{fig:Segmented_bench}
+\end{figure}
+
+The benchmarking can be seen in Figure~\ref{fig:Segmented_bench}. We can see
+that the extra work we do in the segreduce significantly worsens our runtime.
+The overhead of the segscan is not as large, but still noticeable. They all
+seem to be performing in linear time. 
+% subsection Benchmarking (end)
+
+% subsection Segmented scans and reductions (end)
+
+\subsection{Reduce by index}
+The implementation for the reduce by index can be seen below:
+\begin{lstlisting}[language={futhark}]
+def custom_reduce_by_index 'a [m] [n]  (dest: *[m]a)
+                                (f: a -> a -> a) (ne: a)
+                                (is: [n]i64) (as: [n]a) : *[m]a =
+  let (sorted_is, sorted_as) = radix_sort_int_by_key (\(i, _) -> i) i64.num_bits i64.get_bit (zip is as)
+                               |> unzip
+  let prev_is = rotate (-1) sorted_is
+  let flag_array = map2 (\i_curr i_prev -> i_curr != i_prev) sorted_is prev_is
+  let seg_res = zip sorted_as flag_array |> segreduce f ne
+  in if length seg_res >= m then map2 (\a b -> f a b) (take m seg_res) dest
+     else 
+     let pad = replicate (m - length seg_res) ne 
+     let inp = seg_res ++ pad
+     in map2 (\a b -> f a b) (inp :> [m]a) dest
+\end{lstlisting}
+
+The function works by first sorting the indices and values by the indices. Then
+we create the flag array by simply checking if the current index is equal to
+the previous index. We can then use the aforementioned segreduce function to
+compute the reduced sum of each of the segments. At last, we have to check if
+we have enough values to fill the entire dest array. If we do not, then we pad
+with the neutral elements and map this into the destination. One could argue
+whether or not we should add the neutral element or simply leave the dest value
+as is. However, I chose this solution as there is "no" sum when there is no
+elements that correspond to it.
+
+The implementation was tested as follows:
+\begin{lstlisting}[language={futhark}]
+-- ==
+-- entry: test_reduce
+-- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64] [10, 10, 10, 10] }
+-- output { true }
+-- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64, 2i64] [10, 10, 10, 10, 10] }
+-- output { true }
+-- nobench input { [0,0,0] [0i64, 1i64, 1i64, 2i64, 2i64] [10, 20, 30, 40, 50] }
+-- output { true }
+entry test_reduce dest is vs = 
+	let builtin = reduce_by_index (copy dest) (+) 0i32 is vs
+	let custom = custom_reduce_by_index (copy dest) (+) 0i32 is vs
+	in foldl (||) false <| map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
+\end{lstlisting}
+And we seem to get the same result as the default implementation in these cases.
+
+\subsubsection{Discussion and benchmarking}
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{../../src/segmented/combined-opencl.png}
+  \end{center}
+  \caption{Benchmarking results for the reduce function}\label{fig:reduce_by_index}
+\end{figure}
+The benchmarking can be seen in Figure~\ref{fig:reduce_by_index}
+
+
+% section Segmented operations (end)

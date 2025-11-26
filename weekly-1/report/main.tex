@@ -27,7 +27,8 @@ Throughout this assignment all benchmarking was done using the Hendrix cluster
 with the NVIDIA GeForce GTX Titax X GPU. Further all testing was done using the
 builtin \emph{futhark bench} command. I don't know the specifics of which CPU
 the batch jobs were run on, but if we assume these are the same as the default
-ssh machine, then it is: Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz.
+ssh machine, then it is: Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz. Each task is
+also run with 5 CPUS assigned and only a single GPU.
 
 Further, whenever there is a speedup graph line, this is in reference to the baseline Sequential C runtime.
 

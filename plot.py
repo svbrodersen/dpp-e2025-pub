@@ -40,10 +40,30 @@ BenchmarkResults = Dict[str, Dict[str, Any]]
 
 def parse_arguments() -> argparse.Namespace:
     """Parses command line arguments."""
-    parser = argparse.ArgumentParser(description="Plot all benchmark results from JSON files.")
-    parser.add_argument("progname", type=str, help="Base name of the program (e.g., 'mybench'). Files are expected to be <progname>-<backend>.json.")
-    parser.add_argument("xbase", type=int, help="Base number for the x-axis")
-    parser.add_argument("ybase", type=int, help="Base number for the x-axis")
+    parser = argparse.ArgumentParser(
+        description="Plot all benchmark results from JSON files."
+    )
+
+    parser.add_argument(
+        "progname",
+        type=str,
+        help="Base name of the program (e.g., 'mybench'). Files: <progname>-<backend>.json."
+    )
+
+    parser.add_argument(
+        "--xbase",
+        type=int,
+        default=None,
+        help="Log scale base for X axis. Omit for linear scale."
+    )
+
+    parser.add_argument(
+        "--ybase",
+        type=int,
+        default=None,
+        help="Log scale base for Y axis. Omit for linear scale."
+    )
+
     return parser.parse_args()
 
 def load_json(filepath: Path) -> Optional[Dict[str, Any]]:
@@ -192,8 +212,11 @@ def create_plot(benchmark_name: str,
     ax1.set_xticks(sizes)
     ax1.set_xticklabels(sizes, rotation='vertical')
     
-    ax1.set_xscale('log', base=xbase)
-    ax1.set_yscale('log', base=ybase)
+    if xbase is not None:
+        ax1.set_xscale('log', base=xbase)
+
+    if ybase is not None:
+        ax1.set_yscale('log', base=ybase)
 
     # --- Plot 2: Speedup (Right Axis) ---
     ax2 = ax1.twinx()
@@ -222,7 +245,7 @@ def create_plot(benchmark_name: str,
 
 def create_combined_metric_plot(all_results: BenchmarkResults, 
                                 backend: Backend,
-                                output_file: str):
+                                output_file: str, xbase: int):
     """
     Generates a single plot containing lines for ALL benchmarks 
     for a specific backend's runtimes.
@@ -243,7 +266,7 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
     ax.set_xlabel('Input size')
     ax.set_ylabel('Runtime (ms)')
     ax.set_title(f'Combined {backend.name} Runtimes - All Benchmarks')
-    
+
     # Add legend
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
     
@@ -310,7 +333,8 @@ def main():
         create_combined_metric_plot(
             all_results, 
             backend, 
-            f'combined-{backend.file_suffix}.png'
+            f'{args.progname}-combined-{backend.file_suffix}.png',
+            xbase=args.xbase
         )
 
 if __name__ == '__main__':

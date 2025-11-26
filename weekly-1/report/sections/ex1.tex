@@ -26,7 +26,7 @@ Which seems to work.
 \subsection{Benchmark your function}
 \begin{figure}
   \centering
-  \includegraphics[width=0.85\textwidth]{../src/getting_started/test_process.png}
+  \includegraphics[width=0.95\textwidth]{../src/getting_started/test_process.png}
   \caption{Runtime and speedup of the program written in Section~\ref{sec:ex11}}\label{fig:ex11_runtime}
 \end{figure}
 
@@ -34,6 +34,10 @@ The benchmarking can be seen in Figure~\ref{fig:ex11_runtime}. The runtimes are
 reported via a log scale, where we can see that initially the GPU does not
 offer better performance. However, as the size of the input increases the GPU
 scales better and overtakes the sequential and multicore runtime. 
+
+Further, we can see that the multicore runtime is only slightly better when we
+increase the input size significantly and otherwise it has much the same
+performance as the baseline.
 
 \subsection{Extend your function}\label{sec:ex13}
 The definition of the test\_process\_idx is provided below
@@ -78,7 +82,7 @@ entry test_process_idx = process_idx
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.85\textwidth]{../src/getting_started/test_process_idx.png}
+  \includegraphics[width=0.95\textwidth]{../src/getting_started/test_process_idx.png}
   \caption{Runtime and speedup of the program written for Section~\ref{sec:ex13}}\label{fig:ex13}
 \end{figure}
 
