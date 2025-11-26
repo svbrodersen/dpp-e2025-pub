@@ -1,0 +1,86 @@
+\section{Getting started}
+
+\subsection{Write a function}\label{sec:ex11}
+The program is a straight forward map-reduce composition.
+
+\begin{lstlisting}[language={futhark}]
+def process [n] (xs: [n]i32) (ys: [n]i32) : i32 = 
+  reduce i32.max 0 (map i32.abs (map2 (-) xs ys))
+\end{lstlisting}
+
+And is tested via the following test cases:
+\begin{lstlisting}[language={futhark}]
+-- Process tests
+-- ==
+-- entry: test_process
+-- nobench input { [23 ,45 , -23 ,44 ,23 ,54 ,23 ,12 ,34 ,54 ,7 ,2 , 4 ,67] 
+--                 [ -2 , 3 , 4 ,57 ,34 , 2 , 5 ,56 ,56 , 3 ,3 ,5 ,77 ,89] }
+-- output { 73 }
+-- nobench input { empty([0]i32) empty([0]i32) }
+-- output { 0 }
+entry test_process = process
+\end{lstlisting}
+
+Which seems to work.
+
+\subsection{Benchmark your function}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{../src/getting_started/test_process.png}
+  \caption{Runtime and speedup of the program written in Section~\ref{sec:ex11}}\label{fig:ex11_runtime}
+\end{figure}
+
+The benchmarking can be seen in Figure~\ref{fig:ex11_runtime}. The runtimes are
+reported via a log scale, where we can see that initially the GPU does not
+offer better performance. However, as the size of the input increases the GPU
+scales better and overtakes the sequential and multicore runtime. 
+
+\subsection{Extend your function}\label{sec:ex13}
+The definition of the test\_process\_idx is provided below
+
+\begin{lstlisting}[language={futhark}]
+def process_idx [n] (xs: [n]i32) (ys: [n]i32) : (i32, i64) = 
+  let max (d1, i1) (d2, i2) =
+      if d1 > d2 then (d1, i1)
+      else if  d1 < d2 then (d2, i2)
+      else if i1 > i2 then (d1, i1)
+      else (d2, i2)
+    in reduce_comm max (0, -1) 
+      (zip
+        (map i32.abs (map2 (-) xs ys)) 
+        (iota n)
+      )
+\end{lstlisting}
+
+The function implements a max function which is cumulative by using the indices
+for tie-breaking. This lets us use the faster reduce\_comm command. The default
+reduce function optimises this already when we use a built in operator which is
+cumulative.
+
+The function is then tested and benchmarked as follows:
+\begin{lstlisting}[language={futhark}]
+-- Process idx tests
+-- ==
+-- entry: test_process_idx
+-- nobench input { [23 ,45 , -23 ,44 ,23 ,54 ,23 ,12 ,34 ,54 ,7 ,2 , 4 ,67] 
+--                 [ -2 , 3 , 4 ,57 ,34 , 2 , 5 ,56 ,56 , 3 ,3 ,5 ,77 ,89] }
+-- output { 73 12i64 }
+-- nobench input { empty([0]i32) empty([0]i32) }
+-- output { 0 -1i64 }
+-- notest random input { [100]i32 [100]i32 }
+-- notest random input { [1000]i32 [1000]i32 }
+-- notest random input { [10000]i32 [10000]i32 }
+-- notest random input { [100000]i32 [100000]i32 }
+-- notest random input { [1000000]i32 [1000000]i32 }
+-- notest random input { [10000000]i32 [10000000]i32 }
+entry test_process_idx = process_idx
+\end{lstlisting}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{../src/getting_started/test_process_idx.png}
+  \caption{Runtime and speedup of the program written for Section~\ref{sec:ex13}}\label{fig:ex13}
+\end{figure}
+
+And this seems to work. The benchmarking can be seen in Figure~\ref{fig:ex13},
+which provides the same story as in the previous section.

@@ -1,0 +1,39 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+
+\geometry{margin=1in}
+
+\title{DPP Weekly Assignment 1}
+\author{Simon Vinding Brodersen(rzn875)}
+\date{\today}
+
+\input{futhark.tex}
+
+\begin{document}
+
+\maketitle
+
+\section*{Note on benchmarking}
+Throughout this assignment all benchmarking was done using the Hendrix cluster
+with the NVIDIA GeForce GTX Titax X GPU. Further all testing was done using the
+builtin \emph{futhark bench} command. I don't know the specifics of which CPU
+the batch jobs were run on, but if we assume these are the same as the default
+ssh machine, then it is: Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz.
+
+Further, whenever there is a speedup graph line, this is in reference to the baseline Sequential C runtime.
+
+\input{sections/ex1.tex}
+\input{sections/ex2.tex}
+\input{sections/ex3.tex}
+\input{sections/ex4.tex}
+
+\end{document}
