@@ -115,7 +115,7 @@ The implementation was tested as follows:
 entry test_reduce dest is vs = 
 	let builtin = reduce_by_index (copy dest) (+) 0i32 is vs
 	let custom = custom_reduce_by_index (copy dest) (+) 0i32 is vs
-	in foldl (||) false <| 
+  in foldl (&&) true <| 
      map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
 \end{lstlisting}
 And we seem to get the same result as the default implementation in these cases.
@@ -127,8 +127,17 @@ And we seem to get the same result as the default implementation in these cases.
   \end{center}
   \caption{Benchmarking results for the reduce function}\label{fig:reduce_by_index}
 \end{figure}
-The benchmarking can be seen in Figure~\ref{fig:reduce_by_index}  . 
-% TODO: Not done
+My algorithm first runs a radix sort algorithm, which runs in O(k n) work and
+O(k log(n)) span, where k is the number of bits in each element. Then it runs a
+rotate and map which both run in O(n) work and O(1) span before running a
+segreduce. The segreduce itself runs with work O(n) and span O(log n) as it is
+dominated by the scan function. This means that the work and span is dominated
+by the sorting of O (k n) and O(k log n).
 
+The benchmarking can be seen in Figure~\ref{fig:reduce_by_index}. Here we can
+see that my implementation is significantly slower than the built in version.
+While in other cases my implementation seemed to have the same time complexity
+this certainly does not seem to be the case. As such, I do not think this is
+optimal.
 
 % section Segmented operations (end)

@@ -26,7 +26,7 @@ def custom_reduce_by_index 'a [m] [n]  (dest: *[m]a)
 entry test_reduce dest is vs = 
 	let builtin = reduce_by_index (copy dest) (+) 0i32 is vs
 	let custom = custom_reduce_by_index (copy dest) (+) 0i32 is vs
-	in foldl (||) false <| map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
+	in foldl (&&) true <| map2 (\a b -> a == b) (builtin :> [3]i32) (custom :> [3]i32)
 
 -- ==
 -- entry: bench_custom_reduce_idx

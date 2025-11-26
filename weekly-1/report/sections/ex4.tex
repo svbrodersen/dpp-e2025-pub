@@ -99,18 +99,10 @@ returning is an unused new random state returned from generating b.
 The benchmarks can be seen in Table~\ref{tab:ising_performance}. Here we can
 see that when h and w increase, then the GPU parallelisation significantly
 increases the performance. However, when n increases we do not see the same
-speedup. This is most likely because of GPU thrashing where the GPU simply does
-not have enough memory to handle the larger amount of data and keeps having to
-copy between global and shared memory.
+speedup. This makes sense as we simply have a sequential loop over n.
 
 % subsection benchmarking (end)
-
-
 % subsection The step function (end)
-
-
 % subsection Computing Delta (end)
-
-
 % subsection Generate initial state (end)
 % section 2D Ising Model (end)

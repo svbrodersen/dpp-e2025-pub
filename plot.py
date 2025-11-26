@@ -261,6 +261,7 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
                     data[metric_key], 
                     marker='o', 
                     markersize=4, 
+                    alpha=0.7,
                     label=benchmark_name)
 
     ax.set_xlabel('Input size')
@@ -271,7 +272,7 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
     ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
     
     fig.tight_layout()
-    plt.autoscale(enable=True, axis='both', tight=True)
+    plt.autoscale(enable=True, axis='both')
     
     print(f"Saving combined plot to {output_file}...")
     plt.savefig(output_file, bbox_inches='tight')
