@@ -82,18 +82,28 @@ def optimII1Ker [m][n][q] (Sa: [m]u32, Da: [n]f32)
   --         efficient one. When the implementation is finished and validates,
   --         you may un-comment the above #[unsafe] to avoid redundant boundary
   --         checks and speed up execution a bit.
-  let (ba1, flag_array_a') = mkFlagArray Sa 0 (iota (length Sa))
-  let flag_array_a = map bool.u32 flag_array_a' 
-  let iia1 = sgmScan (+) 0 flag_array_a flag_array_a'
-  let iia2 = map2(\i sgm -> i - ba1[sgm]) (iota (length flag_array_a)) iia1 
-  let (bb1, flag_array_b') = mkFlagArray Sb 0 (iota (length Sb))
-  let flag_array_b = map bool.u32 flag_array_b' 
-  let iib1 = sgmScan (+) 0 flag_array_b flag_array_b'
-  let iib2 = map2(\i sgm -> i - bb1[sgm]) (iota (length flag_array_b)) iib1 
-
-
-  replicate m 1.0f32
-
+  let (ba1, flag_array_a') = mkFlagArray Sa 0u32 (replicate m 1u32)
+  let beg_segs = map2 (\s i -> if s==0 then -1i64 else i64.u32 i) Sa ba1
+  let flag_array_a = map bool.u32 flag_array_a' :> [n]bool
+  let flen_iota = reduce (+) 0 Sa |> i64.u32 |> iota |> map u32.i64 :> [n]u32
+  let iia1 = sgmScan (+) 0 flag_array_a (flag_array_a' :> [n]u32) :> [n]u32
+  let iia2 = map2(\i sgm -> i - ba1[i64.u32 sgm]) flen_iota iia1 
+  let (bb1, _) = mkFlagArray Sb 0u32 (replicate m 1u32)
+  let bofinds = map2 (\off ind -> Db[i64.u32 off+ind]) bb1 inds
+  let vls = scatter (replicate n 0) beg_segs bofinds
+  let tmp1s = map2 (\a sgm -> (f32.sqrt a) * vls[i64.u32 sgm] + cs[i64.u32 sgm]) Da iia1 
+  let iotis = iia2 :> [n]u32
+  let iotfs = map f32.u32 iotis
+  let tmp2s = map2 (+) tmp1s iotfs
+  let res =
+    let tmp_scan = sgmScan f32.max f32.lowest flag_array_a tmp2s
+    in  imap2 (iota m) Sa 
+          (\i s -> if s <= 0 then f32.lowest 
+                   else if i == m-1
+                        then tmp_scan[n-1]
+                        else tmp_scan[i64.u32 ba1[i+1]-1]
+          ) 
+  in  res
 
 -----------------------------------------
 --- dataset generation & entry points ---
