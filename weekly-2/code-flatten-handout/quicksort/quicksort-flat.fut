@@ -110,8 +110,7 @@ let partition2L 't [n] [m]
 
   let inds = map3 (\c indT indF -> if c then indT-1i32 else indF - 1) condsL indsT indsF
 
-  let exc_begs = map (\i -> begs[i] - shp[i]) (iota (length shp))
-  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> ind + exc_begs[sgm]) outinds inds
+  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> ind + begs[sgm] - shp[sgm]) outinds inds
   let fltarrL = scatter (replicate n dummy) glob_idxs arr
   in  (shp, (shp,fltarrL))
 
