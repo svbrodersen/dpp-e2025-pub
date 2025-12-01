@@ -98,10 +98,22 @@ let partition2L 't [n] [m]
                 (shp: [m]i32, arr: [n]t) :
                 ([m]i32, ([m]i32, [n]t)) =
   let begs   = scan (+) 0 shp
-  let flags  = mkFlagArray shp 0i32 (map (+1) (map i32.i64 (iota m)))
-  let outinds= sgmSumInt flags <| map (\f -> if f==0 then 0 else f-1) flags
+  let flags  = mkFlagArray shp 0i32 (map (+1) (map i32.i64 (iota m))) :> [n]i32
+  let outinds = sgmSumInt flags <| map (\f -> if f==0 then 0 else f-1) flags
 
-  in  (shp, (shp,arr))
+  let tflgs = map(\c -> if c then 1i32 else 0i32) condsL
+  let fflgs = map(\b -> 1i32 - b) tflgs
+
+  let indsT = sgmSumInt flags tflgs 
+  let tmps = sgmSumInt flags fflgs
+  let indsF = map2 (\sgm item -> let inner_n = begs[sgm] in if inner_n > 0 then item + indsT[inner_n - 1] else item -1i32) outinds tmps
+
+  let inds = map3 (\c indT indF -> if c then indT-1i32 else indF - 1) condsL indsT indsF
+
+  let exc_begs = map (\i -> begs[i] - shp[i]) (iota (length shp))
+  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> ind + exc_begs[sgm]) outinds inds
+  let fltarrL = scatter (replicate n dummy) glob_idxs arr
+  in  (shp, (shp,fltarrL))
 
 -----------------------
 --- Flat Quicksort
