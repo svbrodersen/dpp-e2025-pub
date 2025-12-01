@@ -1,3 +1,17 @@
 \section{Flattening Rule for Histogram inside Map}\label{sec:flattening_rule_for_histogram_inside_map} % (fold)
+Much the same as before, let Sx and Si the shape of the inner arrays of histos
+and iss, same as $S^1_{arr}$ in the slides, let Dx denote the flat data of
+histos, let Di denote the flat data of iss and Dv be the flat data of vss.
 
+Then we have the following flattening rules for the reduce\_by\_index inside a map:
+\begin{lstlisting}[mathescape=true]
+  let (Bx, _) = mkFlagArray Sx 0 (iota (length Sx))
+  let (Bi, flags') = mkFlagArray Si (iota (length Si))
+  let flags = map bool.u32 flags'
+  let ii1s = sgmScan (+) 0 flags flags'
+  let glob_idxs = map2 (\sgm ind -> ind + Bx[sgm]) ii1s Di
+  in res = reduce_by_idx ($\odot$) $0_\odot$ Dx glob_idxs Dv
+\end{lstlisting}
+
+The argument for correctness is analogous to that of the previous task.
 % section Flattening Rule for Histogram inside Map (end)
