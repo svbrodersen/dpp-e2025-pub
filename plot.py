@@ -248,31 +248,92 @@ def create_combined_metric_plot(all_results: BenchmarkResults,
                                 output_file: str, xbase: int):
     """
     Generates a single plot containing lines for ALL benchmarks 
-    for a specific backend's runtimes.
+    for a specific backend's runtimes with speedup on a secondary axis.
     """
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax1 = plt.subplots(figsize=(12, 8))
     
     metric_key = f'{backend.file_suffix}_runtimes'
     
-    # Iterate through all benchmarks and plot them on the same axis
+    # First pass: find the slowest benchmark (by last) to use as baseline
+    slowest_last = 0.0
+    slowest_benchmark = None
+    baseline_runtimes = None
+    
     for benchmark_name, data in all_results.items():
         if metric_key in data and data['sizes'].size > 0:
-            ax.plot(data['sizes'], 
-                    data[metric_key], 
-                    marker='o', 
-                    markersize=4, 
-                    alpha=0.7,
-                    label=benchmark_name)
+            last_runtime = data[metric_key][-1]
+            if last_runtime > slowest_last:
+                slowest_last = last_runtime
+                slowest_benchmark = benchmark_name
+                baseline_runtimes = data[metric_key]
+    
+    if baseline_runtimes is None:
+        print(f"Warning: No valid data found for {backend.name}. Skipping combined plot.")
+        return
+    
+    print(f"Using '{slowest_benchmark}' as baseline (last runtime: {slowest_last:.2f} ms)")
+    
+    # Plot runtimes on primary axis
+    runtime_plots = []
+    for benchmark_name, data in all_results.items():
+        if metric_key in data and data['sizes'].size > 0:
+            p = ax1.plot(data['sizes'], 
+                        data[metric_key], 
+                        marker='o', 
+                        markersize=4, 
+                        alpha=0.7,
+                        label=f'{benchmark_name} runtime')
+            runtime_plots.extend(p)
 
-    ax.set_xlabel('Input size')
-    ax.set_ylabel('Runtime (ms)')
-    ax.set_title(f'Combined {backend.name} Runtimes - All Benchmarks')
-
-    # Add legend
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+    ax1.set_xlabel('Input size')
+    ax1.set_ylabel('Runtime (ms)', color='k')
+    ax1.tick_params(axis='y', labelcolor='k')
+    
+    if xbase is not None:
+        ax1.set_xscale('log', base=xbase)
+    
+    # Create secondary y-axis for speedup
+    ax2 = ax1.twinx()
+    
+    speedup_plots = []
+    for benchmark_name, data in all_results.items():
+        if metric_key in data and data['sizes'].size > 0:
+            # Get baseline runtimes at matching sizes
+            baseline_sizes = all_results[slowest_benchmark]['sizes']
+            current_sizes = data['sizes']
+            
+            # Find common sizes between baseline and current benchmark
+            speedups = []
+            plot_sizes = []
+            
+            for i, size in enumerate(current_sizes):
+                # Find matching size in baseline
+                baseline_idx = np.where(baseline_sizes == size)[0]
+                if len(baseline_idx) > 0:
+                    speedup = baseline_runtimes[baseline_idx[0]] / data[metric_key][i]
+                    speedups.append(speedup)
+                    plot_sizes.append(size)
+            
+            if speedups:  # Only plot if we have matching data points
+                p = ax2.plot(plot_sizes, 
+                            speedups, 
+                            markersize=4, 
+                            linestyle='--',
+                            alpha=0.5,
+                            label=f'{benchmark_name} speedup')
+                speedup_plots.extend(p)
+    
+    ax2.set_ylabel('Speedup (x)', color='k')
+    ax2.tick_params(axis='y', labelcolor='k')
+    
+    # Combine legends from both axes
+    all_plots = runtime_plots + speedup_plots
+    all_labels = [p.get_label() for p in all_plots]
+    ax1.legend(all_plots, all_labels, bbox_to_anchor=(1.15, 1), loc='upper left', borderaxespad=0.)
+    
+    ax1.set_title(f'Combined {backend.name} - All Benchmarks (Baseline: {slowest_benchmark})')
     
     fig.tight_layout()
-    plt.autoscale(enable=True, axis='both')
     
     print(f"Saving combined plot to {output_file}...")
     plt.savefig(output_file, bbox_inches='tight')
