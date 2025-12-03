@@ -102,21 +102,21 @@ let partition2L 't [n] [m]
   let outinds = sgmSumInt flags <| map (\f -> if f==0 then 0 else f-1) flags
 
   let tflgs = map(\c -> if c then 1i32 else 0i32) condsL
-  let fflgs = map(\b -> 1i32 - b) tflgs
+  let fflgs = map(\b -> 1 - b) tflgs
 
   let indsT = sgmSumInt flags tflgs 
   let tmps = sgmSumInt flags fflgs
 
   --let lst   = if n > 0 then indsT[n-1] else -1i32
   --let indsF = map (+lst) tmp
-  let tmp1s = map(\n -> if n > 0 then indsT[n - 1] else -1i32) begs
+  let tmp1s = map2(\inc_n n -> if n > 0 then indsT[inc_n - 1] else -1) begs shp
   let indsF = map2 (\sgm item -> item + tmp1s[sgm]) outinds tmps
 
-  let inds = map3 (\c indT indF -> if c then indT-1i32 else indF - 1) condsL indsT indsF
+  let inds = map3 (\c indT indF -> if c then indT-1 else indF - 1) condsL indsT indsF
 
   let glob_idxs = map i64.i32 <| map2 (\sgm ind -> if sgm > 0 then ind + begs[sgm-1] else ind) outinds inds
   let fltarrL = scatter (replicate n dummy) glob_idxs arr
-  in  (shp, (shp,fltarrL))
+  in  (tmp1s, (shp, fltarrL))
 
 -----------------------
 --- Flat Quicksort
@@ -168,11 +168,26 @@ let quicksortL [n][m] (shp: [m]i32, arr: [n]f32) : ([]i32, []f32) =
 let main0 [m][n] (shp: [m]i32) (arr: [n]i32) : ([m]i32, [m]i32, [n]i32) =
     let (ps, (shp',arr')) = partition2L (map (\x -> (x % 2) == 0i32) arr) 0i32 (shp, arr)
     in  (ps, shp', arr')
+    
+-- entry: main1
+-- notest random input { [10]i32 }
+-- notest random input { [100]i32 }
+-- notest random input { [1000]i32 }
+-- notest random input { [10000]i32 }
+-- notest random input { [100000]i32 }
+-- notest random input { [1000000]i32 }
+-- notest random input { [10000000]i32 }
+entry main1 [n] (arr: [n]i32) = main0 ([i32.i64 n]) arr
 
 -- futhark dataset -b --f32-bounds=-1000000.0:1000000.0 -g [10000000]f32 | ./quicksort-flat -t /dev/stderr -r 2 > /dev/null
 -- ==
 -- entry: main
+-- notest random input { [10]f32 }
+-- notest random input { [100]f32 }
 -- notest random input { [1000]f32 }
+-- notest random input { [10000]f32 }
+-- notest random input { [100000]f32 }
+-- notest random input { [1000000]f32 }
 entry main [n] (arr: [n]f32) =
     let (_,res) = quicksortL ([i32.i64 n], arr)   
     in  res
