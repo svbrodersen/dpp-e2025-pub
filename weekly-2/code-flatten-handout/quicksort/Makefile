@@ -1,5 +1,6 @@
 clean:
 	rm -rf ./quicksort-flat.c quicksort-flat
+	rm -rf *.actual *.expected
 
 bench-json:
 	futhark bench --backend=cuda --json=quicksort-flat-cuda.json quicksort-flat.fut

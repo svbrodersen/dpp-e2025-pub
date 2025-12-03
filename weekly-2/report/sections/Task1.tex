@@ -1,5 +1,6 @@
 \section{Flattening with the New, More Efficient Rules}
-My code validates and is provided below:
+My code validates on default input (which is checking the implementation
+against the classic version) and the implementation is provided below:
 \begin{lstlisting}[language={futhark}]
 def optimII1Ker [m][n][q] (Sa: [m]u32, Da: [n]f32)
                           (Sb: [m]u32, Db: [q]f32)
@@ -29,7 +30,7 @@ def optimII1Ker [m][n][q] (Sa: [m]u32, Da: [n]f32)
 
 The runtime comparison between the standard classic implementation and the new
 optimized implementation can be seen below:
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \begin{tabular}{c|c|c|c}
 \hline
@@ -46,5 +47,7 @@ optimized implementation can be seen below:
 \end{table}
 
 This means that the new optimized implementation improves performance by around
-1.44 across the board.
+1.44 across the board. This follows our general intuition about how the new
+flattening rules reduce the overall memory overhead needed and thus leads to
+performance improvements.
 

@@ -1,3 +1,81 @@
 \section{Lifted version of partition2}\label{sec:lifted_version_of_partition_} % (fold)
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=0.95\textwidth]{../code-flatten-handout/quicksort/quicksort-flat-quicksort-flat.fut.png}
+  \end{center}
+  \caption{Benchmarking result of the baseline sequential C implementation of
+  quicksort and with Cuda backend.}\label{fig:quicksort_bench}
+\end{figure}
+
+My implementation validates given the standard input. Further tests along with
+the implementation can be seen below.
+
+\begin{lstlisting}[language={futhark}]
+-- ==
+-- entry: main0
+-- nobench input { [5, 5] [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+-- output { [3, 2] [5,5] [0, 2, 4, 1, 3, 6, 8, 5, 7, 9] }
+-- nobench input { [10] [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+-- output { [5] [10] [0, 2, 4, 6, 8, 1, 3, 5, 7, 9] }
+entry main0 [m][n] (shp: [m]i32) (arr: [n]i32) : ([m]i32, [m]i32, [n]i32) =
+    let (ps, (shp',arr')) = partition2L (map (\x -> (x % 2) == 0i32) arr) 0i32 (shp, arr)
+    in  (ps, shp', arr')
+
+-- futhark dataset -b --f32-bounds=-1000000.0:1000000.0 -g [10000000]f32 | ./quicksort-flat -t /dev/stderr -r 2 > /dev/null
+-- ==
+-- entry: main
+-- nobench compiled input { [29.0f32, 5.0f32, 7.0f32, 11.0f32, 2.0f32, 3.0f32, 13.0f32, 23.0f32, 17.0f32, 19.0f32] }
+-- output { [2.0f32, 3.0f32, 5.0f32, 7.0f32, 11.0f32, 13.0f32, 17.0f32, 19.0f32, 23.0f32, 29.0f32] }
+entry main [n] (arr: [n]f32) =
+    let (_,res) = quicksortL ([i32.i64 n], arr)
+    in  res
+
+def partition2L 't [n] [m]
+                -- the shape of condsL is also shp
+                (condsL: [n]bool)
+                (dummy: t)
+                (shp: [m]i32, arr: [n]t) : ([m]i32, ([m]i32, [n]t)) =
+  -- These are just given, no rules are used
+  let begs = scan (+) 0 shp
+  let flags = mkFlagArray shp 0i32 (map (+ 1) (map i32.i64 (iota m))) :> [n]i32
+  let outinds = sgmSumInt flags <| map (\f -> if f == 0 then 0 else f - 1) flags
+
+  -- This uses the rule of map inside a map
+  let tflgs = map (\c -> if c then 1i32 else 0i32) condsL
+  let fflgs = map (\b -> 1 - b) tflgs
+
+  -- This uses the rule for a scan inside a map
+  let indsT = sgmSumInt flags tflgs
+  let tmps = sgmSumInt flags fflgs
+
+  -- This uses the map inside a map. However, as we depend on the (n>0) being
+  -- the individual segments length, then we need need to take care of using
+  -- the different n for index and the one for the > 0 check
+  let tmp1s = map2 (\inc_n n -> if n > 0 then indsT[inc_n - 1] else -1) begs shp
+  let indsF = map2 (\sgm item -> item + tmp1s[sgm]) outinds tmps
+
+  -- map inside a map
+  let inds = map3 (\c indT indF -> if c then indT - 1 else indF - 1) condsL indsT indsF
+
+  -- My custom (and might I add beautiful) scatter rule from the previous section
+  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> if sgm > 0 then ind + begs[sgm - 1] else ind) outinds inds
+  let fltarrL = scatter (replicate n dummy) glob_idxs arr
+  in (tmp1s, (shp, fltarrL))
+\end{lstlisting}
+
+The comments correspond at an almost one to one the standard partition2
+function and how I have managed to update the code. I have not added the
+partition2 code as well, as I hope the variable naming makes it easy to follow
+which parts have been translated from the original.
+
+With this implementation the benchmarking results can be seen in Figure~\ref{fig:quicksort_bench}.
+Here we can see, how on small inputs the cost of loading the cuda kernels
+outweighs the benefits of using the GPU. As the input size grows, then we see
+that the CUDA backend outperforms the standard C implementation by a factor of
+about $120\times$ at the largest part. 
+
+Further, it is interesting to note how the cuda does not have a completely flat
+curve initially. This supports our intuition, that the span of our
+implementation is $O(\lg n)$ as was found in the slides.
 
 % section Lifted version of partition2 (end)
