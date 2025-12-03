@@ -8,6 +8,9 @@
 \usepackage{geometry}
 \usepackage{enumitem}
 \usepackage{xcolor}
+\usepackage{etoolbox}
+\BeforeBeginEnvironment{lstlisting}{\par\noindent\begin{minipage}{\linewidth}}
+\AfterEndEnvironment{lstlisting}{\end{minipage}\par\addvspace{\topskip}}
 
 \input{futhark.tex}
 \lstdefinestyle{futharkStyle}{
@@ -20,7 +23,6 @@
   tabsize=4,
   frame=single,
   belowcaptionskip=1\baselineskip,
-  breaklines=true,
   frame=none,
   numbers=none,
   keywordstyle=\bfseries\color{red},
