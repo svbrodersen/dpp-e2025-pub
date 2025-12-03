@@ -9,7 +9,7 @@
 -- 3. quicksort:  is the flat-parallel version of quicksort algorithm.
 --                quicksort implementation uses `partition2L`.
 -- ==
--- compiled input { [29.0f32, 5.0f32, 7.0f32, 11.0f32, 2.0f32, 3.0f32, 13.0f32, 23.0f32, 17.0f32, 19.0f32] }
+-- nobench compiled input { [29.0f32, 5.0f32, 7.0f32, 11.0f32, 2.0f32, 3.0f32, 13.0f32, 23.0f32, 17.0f32, 19.0f32] }
 -- output { [2.0f32, 3.0f32, 5.0f32, 7.0f32, 11.0f32, 13.0f32, 17.0f32, 19.0f32, 23.0f32, 29.0f32] }
 
 ---------------------
@@ -165,18 +165,16 @@ let quicksortL [n][m] (shp: [m]i32, arr: [n]f32) : ([]i32, []f32) =
 --let main [n] (arr: [n]i32) : (i32, [n]i32) =
 --    partition2 (map (\x -> (x % 2) == 0i32) arr) 0i32 arr
 
+-- entry: main1
+-- nobench input { [5, 5] [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+-- output { [0, 2, 4, 1, 3, 6, 8, 5, 7, 9]
 let main0 [m][n] (shp: [m]i32) (arr: [n]i32) : ([m]i32, [m]i32, [n]i32) =
     let (ps, (shp',arr')) = partition2L (map (\x -> (x % 2) == 0i32) arr) 0i32 (shp, arr)
     in  (ps, shp', arr')
     
 -- entry: main1
--- notest random input { [10]i32 }
--- notest random input { [100]i32 }
--- notest random input { [1000]i32 }
--- notest random input { [10000]i32 }
--- notest random input { [100000]i32 }
--- notest random input { [1000000]i32 }
--- notest random input { [10000000]i32 }
+-- nobench input { [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+-- output { [0, 2, 4, 6, 8, 1, 3, 5, 7, 9]
 entry main1 [n] (arr: [n]i32) = main0 ([i32.i64 n]) arr
 
 -- futhark dataset -b --f32-bounds=-1000000.0:1000000.0 -g [10000000]f32 | ./quicksort-flat -t /dev/stderr -r 2 > /dev/null
