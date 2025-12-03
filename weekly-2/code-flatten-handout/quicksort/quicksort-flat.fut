@@ -106,11 +106,15 @@ let partition2L 't [n] [m]
 
   let indsT = sgmSumInt flags tflgs 
   let tmps = sgmSumInt flags fflgs
-  let indsF = map2 (\sgm item -> let inner_n = begs[sgm] in if inner_n > 0 then item + indsT[inner_n - 1] else item -1i32) outinds tmps
+
+  --let lst   = if n > 0 then indsT[n-1] else -1i32
+  --let indsF = map (+lst) tmp
+  let tmp1s = map(\n -> if n > 0 then indsT[n - 1] else -1i32) begs
+  let indsF = map2 (\sgm item -> item + tmp1s[sgm]) outinds tmps
 
   let inds = map3 (\c indT indF -> if c then indT-1i32 else indF - 1) condsL indsT indsF
 
-  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> ind + begs[sgm] - shp[sgm]) outinds inds
+  let glob_idxs = map i64.i32 <| map2 (\sgm ind -> if sgm > 0 then ind + begs[sgm-1] else ind) outinds inds
   let fltarrL = scatter (replicate n dummy) glob_idxs arr
   in  (shp, (shp,fltarrL))
 
@@ -166,7 +170,10 @@ let main0 [m][n] (shp: [m]i32) (arr: [n]i32) : ([m]i32, [m]i32, [n]i32) =
     in  (ps, shp', arr')
 
 -- futhark dataset -b --f32-bounds=-1000000.0:1000000.0 -g [10000000]f32 | ./quicksort-flat -t /dev/stderr -r 2 > /dev/null
-let main [n] (arr: [n]f32) =
+-- ==
+-- entry: main
+-- notest random input { [1000]f32 }
+entry main [n] (arr: [n]f32) =
     let (_,res) = quicksortL ([i32.i64 n], arr)   
     in  res
 

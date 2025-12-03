@@ -1,6 +1,9 @@
 run: optimize-flat-II1.fut mk-datasets.fut util.fut
 	futhark bench --backend=cuda optimize-flat-II1.fut
 
+bench-data: optimize-flat-II1.fut mk-datasets.fut util.fut
+	futhark bench --backend=cuda --json cuda.json optimize-flat-II1.fut
+
 datasets: mk-datasets.fut
 	mkdir -p data
 	futhark cuda mk-datasets.fut
