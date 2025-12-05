@@ -114,7 +114,7 @@ def subtree_sizes [n] (steps: [n]step) : []i64 =
       let indices = filter (\i -> D[i] == cur_depth) (iota n)
       let values = map (\i -> res[i]) indices
       let parent_indices = map (\i -> P[i]) indices
-      in trace <| (reduce_by_index res (+) (0) parent_indices values, cur_depth - 1)
+      in (reduce_by_index res (+) (0) parent_indices values, cur_depth - 1)
   in map i64.i32 res
 
 
