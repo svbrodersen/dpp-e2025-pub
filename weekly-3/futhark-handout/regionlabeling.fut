@@ -40,7 +40,22 @@ def get 'a ((i, j): pos) (g: [][]a) =
 -- > :img ($loadimg "regions-hard.png")
 
 def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
-  ???
+  let hw = h * w
+  let labels_flat = map (\z -> z) (iota (hw))
+  let (_, res) = loop (prev_labels, current_labels) = (replicate hw (-1), labels_flat) while prev_labels != current_labels do
+    let new_labels = map (\fpos -> 
+      let pos = unflat_pos w fpos
+      let color = get pos img
+      let neighbours = map (\d -> 
+        let npos = move d pos
+        in if in_bounds img npos then (npos, get npos img) else (no_pos, 0)
+        ) [#n, #w, #e, #s]
+      let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then flat_pos w npos else -1i64) neighbours
+      in reduce i64.max fpos same_color_labels
+    ) (iota hw) 
+    in (current_labels, new_labels)
+  in unflatten (res :> [h * w]i64)
+
 
 -- | Could be improved. This is unlikely to produce something very legible.
 def colourise_regions [h] [w] (labels: [h][w]i64) : [h][w]u32 =
@@ -59,7 +74,6 @@ def norm_edge w ((a, b): edge) : edge =
 -- colour.
 def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
   assert false []
-
 -- TODO
 
 def region_label_smarter [h] [w] (img: [h][w]u32) =
