@@ -73,8 +73,23 @@ def norm_edge w ((a, b): edge) : edge =
 -- | Create normalised edges linking all neighbouring pixels with the same
 -- colour.
 def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
-  assert false []
--- TODO
+  map (\fpos -> 
+    let pos = unflat_pos w fpos
+    let color = get pos img
+    let neighbours = map (\d -> 
+      let npos = move d pos
+      in if in_bounds img npos then (npos, get npos img) else (no_pos, 0)
+      ) [#n, #w, #e, #s]
+    let same_color_labels = map (\(npos, c) -> 
+      if c == color && npos != no_pos then 
+        flat_pos w npos 
+      else -1i64) neighbours 
+    let edges = map (\npos -> 
+        if npos == -1 then (-1, -1) else if npos > fpos then (fpos, npos) else (npos, fpos)
+      ) same_color_labels
+    in edges
+  ) (iota (h*w)) 
+
 
 def region_label_smarter [h] [w] (img: [h][w]u32) =
   -- Step 1: compute edges.
