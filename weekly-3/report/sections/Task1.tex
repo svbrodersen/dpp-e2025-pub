@@ -1,0 +1,65 @@
+\section{Tree Operations}
+
+\subsection{Implement \emph{depths}}
+Below my implementation of the depths can be seen, which seems to work.
+\begin{lstlisting}[language={futhark}]
+def depths (steps: []step) : [](i64, i32) =
+  let (arr, values, keep) = unzip3 <| map (\s -> 
+    match s
+    case #u -> (-1, -1, false)
+    case #d x -> (1, x, true)
+  ) steps
+  let inc_scan_arr = scan (+) 0 arr
+  let exc_scan_arr = map2 (\a b -> a - b) inc_scan_arr arr
+  let (depth, value, _) = zip3 exc_scan_arr values keep |> filter (\(_, _, b) -> b) |> unzip3
+  in zip depth value
+\end{lstlisting}
+
+
+Here we have to convert the steps into items of 1 for down and -1 for up
+operations. Then we can do an exclusive scan and at last remove all the
+elements which originally corresponded to up items as these do not add new
+elements to the graph.
+
+If we let N denote the length of steps, then we have a map, a scan, another map
+and at last a filter, which all work on an array of the full length N. The
+filter and the scan operation is what is the limiting factor giving us work of
+O($N$) and span of O($\lg N$).
+
+Any sequential computation would have to touch all elements at least once, and
+as such this implementation is work efficient.
+
+\subsection{Implement \emph{parents}}
+Below is my implementation of the parents function.
+\begin{lstlisting}[language={futhark}]
+def parents (D: []i64) : []i64 =
+  let n = length D
+  let depth_tuple = zip (D :> [n]i64) (iota n)
+  let parents = loop parents = [0] for i' < n - 1 do 
+    let i = i' + 1
+    let search_d = D[i] - 1
+    let search_ds = map (\i -> depth_tuple[i]) (iota i)
+    let (_, p) = reduce_comm (\(d1, i1) (d2, i2) -> 
+      if (d1 == d2) && (d1 == search_d) then 
+        if i1 > i2 then (d1, i1)
+        else (d2, i2)
+      else if d1 == search_d then (d1, i1)
+      else if d2 == search_d then (d2, i2)
+      else (-1,-1)
+    ) (0, -1) search_ds
+    in parents ++ [p]
+  in parents
+\end{lstlisting}
+We initialize the parents with the root being itself, and then otherwise we
+search to the left of us for items with a value less than the current index,
+where we choose the higher index in case of a tie. 
+
+The algorithm runs a sequential loop over all elements (except the root).
+Inside this loop it runs a map and a reduce\_comm. The reduce\_comm only runs
+on the left items, meaning that the length that is searched is a reduced subset
+of the full list. However, as an upper bound this would still be over the full
+array. As such inside the loop we do O($N$) work with a span of O($\lg N$). We
+do this within a loop giving total work of O($N^2$) and span O($N \lg N$).
+
+If we simply traverse the tree, then we could compute the parent tree in a sequential fashion. As such, this is by no means work efficient.
+

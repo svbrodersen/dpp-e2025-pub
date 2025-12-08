@@ -71,7 +71,7 @@ def colourise_regions [h] [w] (labels: [h][w]i64) : [h][w]u32 =
 type edge = (pos, pos)
 
 -- | Normalise an edge such that it goes from the lesser index to the greater.
-def norm_edge w ((a, b): edge) : edge =
+def norm_edge (w:i64) ((a, b): edge) : edge =
   if pos_lte w a b then (a, b) else (a, b)
 
 -- | Create normalised edges linking all neighbouring pixels with the same
@@ -91,7 +91,7 @@ def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
                                    else (no_pos, no_pos))
                              directions
                        in edges)
-    |> flatten_3d
+    |> flatten_3d |> map (norm_edge w)
   in filter (\(a, b) -> a != no_pos && b != no_pos) edges
 
 def region_label_smarter [h] [w] (img: [h][w]u32) =
@@ -106,7 +106,7 @@ def region_label_smarter [h] [w] (img: [h][w]u32) =
       let targets = map (.1) possible_edges
       let new_forest = reduce_by_index forest i64.max (-1) sources targets
       let non_inserted_edges = filter (\(u, _) -> new_forest[u] != u) edges
-      let new_edges = map (\(a, b) -> (new_forest[a], new_forest[b])) non_inserted_edges
+      let new_edges =  map (\(a, b) -> (new_forest[a], new_forest[b])) non_inserted_edges
       in (new_forest, new_edges)
   let (_, labels_flat) =
     loop (prev_forest, cur_forest) = (replicate (h * w) (-1), forest')
