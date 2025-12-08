@@ -40,22 +40,24 @@ def get 'a ((i, j): pos) (g: [][]a) =
 -- > :img ($loadimg "regions-hard.png")
 
 def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
-  let hw = h * w
-  let labels_flat = map (\z -> z) (iota (hw))
-  let (_, res) = loop (prev_labels, current_labels) = (replicate hw (-1), labels_flat) while prev_labels != current_labels do
-    let new_labels = map (\fpos -> 
-      let pos = unflat_pos w fpos
-      let color = get pos img
-      let neighbours = map (\d -> 
-        let npos = move d pos
-        in if in_bounds img npos then (npos, get npos img) else (no_pos, 0)
-        ) [#n, #w, #e, #s]
-      let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then flat_pos w npos else -1i64) neighbours
-      in reduce i64.max fpos same_color_labels
-    ) (iota hw) 
-    in (current_labels, new_labels)
+  let labels_flat = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
+  let (_, res) =
+    loop (prev_labels, current_labels) = (replicate (h * w) (-1), labels_flat)
+    while prev_labels != current_labels do
+      let new_labels =
+        map (\fpos ->
+               let pos = unflat_pos w fpos
+               let color = get pos img
+               let neighbours =
+                 map (\d ->
+                        let npos = move d pos
+                        in if in_bounds img npos then (npos, get npos img) else (no_pos, 0))
+                     [#n, #w, #e, #s]
+               let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then current_labels[flat_pos w npos] else -1i64) neighbours
+               in reduce i64.max current_labels[fpos] same_color_labels)
+            labels_flat
+      in (current_labels, new_labels)
   in unflatten (res :> [h * w]i64)
-
 
 -- | Could be improved. This is unlikely to produce something very legible.
 def colourise_regions [h] [w] (labels: [h][w]i64) : [h][w]u32 =
@@ -73,23 +75,17 @@ def norm_edge w ((a, b): edge) : edge =
 -- | Create normalised edges linking all neighbouring pixels with the same
 -- colour.
 def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
-  map (\fpos -> 
-    let pos = unflat_pos w fpos
-    let color = get pos img
-    let neighbours = map (\d -> 
-      let npos = move d pos
-      in if in_bounds img npos then (npos, get npos img) else (no_pos, 0)
-      ) [#n, #w, #e, #s]
-    let same_color_labels = map (\(npos, c) -> 
-      if c == color && npos != no_pos then 
-        flat_pos w npos 
-      else -1i64) neighbours 
-    let edges = map (\npos -> 
-        if npos == -1 then (-1, -1) else if npos > fpos then (fpos, npos) else (npos, fpos)
-      ) same_color_labels
-    in edges
-  ) (iota (h*w)) 
-
+  let edges =
+    tabulate_2d h w (\r c ->
+                       let pos = (r, c)
+                       let color = get pos img
+                       let e_neighbour = move #e pos
+                       let s_neighbour = move #s pos
+                       let e_edge = if in_bounds img e_neighbour && color == (get e_neighbour img) then (pos, e_neighbour) else (no_pos, no_pos)
+                       let s_edge = if in_bounds img s_neighbour && color == (get s_neighbour img) then (pos, s_neighbour) else (no_pos, no_pos)
+                       in [e_edge, s_edge])
+    |> flatten_3d
+  in filter (\(a, b) -> a != no_pos && b != no_pos) edges
 
 def region_label_smarter [h] [w] (img: [h][w]u32) =
   -- Step 1: compute edges.
@@ -98,10 +94,17 @@ def region_label_smarter [h] [w] (img: [h][w]u32) =
   let forest = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
   let (forest', _) =
     loop (forest, edges) while length edges > 0 do
-      -- TODO: Here goes steps 3-6
-      assert false (forest, edges)
-  -- TODO: this last step should be a proper ranking instead to get the right
-  -- asymptotics.
-  in ???
+      let possible_edges = filter (\(u, _) -> forest[u] == u) edges
+      let sources = map (.0) possible_edges
+      let targets = map (.1) possible_edges
+      let new_forest = reduce_by_index forest i64.max (-1) sources targets
+      let new_edges = trace(map (\(a, b) -> (new_forest[a], new_forest[b])) edges)
+      let non_inserted_edges = filter (\(a, b) -> a != b) new_edges
+      in (new_forest, non_inserted_edges)
+  let (_, labels_flat) =
+    loop (prev_forest, cur_forest) = (replicate (h * w) (-1), forest')
+    while prev_forest != cur_forest do
+      (cur_forest, map (\i -> cur_forest[cur_forest[i]]) cur_forest)
+  in unflatten labels_flat
 
 -- > :img (colourise_regions (region_label_smarter ($loadimg "regions-hard.png")))
