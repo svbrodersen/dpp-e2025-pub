@@ -2,3 +2,9 @@ lib
 trees
 trees.c
 trees.md
+
+regionlabeling.md
+regionlabeling.c
+regionlabeling
+*.expected
+*.actual
