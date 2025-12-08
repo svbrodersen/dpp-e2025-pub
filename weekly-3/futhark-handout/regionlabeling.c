@@ -74,6 +74,7 @@ const int64_t *futhark_shape_u32_2d(struct futhark_context *ctx, struct futhark_
 // Entry points
 int futhark_entry_colourise_regions(struct futhark_context *ctx, struct futhark_u32_2d **out0, const struct futhark_i64_2d *in0);
 int futhark_entry_region_label_naive(struct futhark_context *ctx, struct futhark_i64_2d **out0, const struct futhark_u32_2d *in0);
+int futhark_entry_region_label_smarter(struct futhark_context *ctx, struct futhark_i64_2d **out0, const struct futhark_u32_2d *in0);
 
 // Miscellaneous
 int futhark_context_sync(struct futhark_context *ctx);
@@ -3084,8 +3085,20 @@ int call_region_label_naive(struct futhark_context *ctx, void **outs, void **ins
     
     return futhark_entry_region_label_naive(ctx, out0, in0);
 }
+const struct type *region_label_smarter_out_types[] = {&type_ZMZNZMZNi64, NULL};
+bool region_label_smarter_out_unique[] = {true};
+const struct type *region_label_smarter_in_types[] = {&type_ZMZNZMZNu32, NULL};
+bool region_label_smarter_in_unique[] = {false};
+const char *region_label_smarter_tuning_params[] = {NULL};
+int call_region_label_smarter(struct futhark_context *ctx, void **outs, void **ins)
+{
+    struct futhark_i64_2d * *out0 = outs[0];
+    struct futhark_u32_2d * in0 = *(struct futhark_u32_2d * *) ins[0];
+    
+    return futhark_entry_region_label_smarter(ctx, out0, in0);
+}
 const struct type *types[] = {&type_i8, &type_i16, &type_i32, &type_i64, &type_u8, &type_u16, &type_u32, &type_u64, &type_f16, &type_f32, &type_f64, &type_bool, &type_ZMZNZMZNi64, &type_ZMZNZMZNu32, NULL};
-struct entry_point entry_points[] = {{.name ="colourise_regions", .f =call_colourise_regions, .tuning_params =colourise_regions_tuning_params, .in_types =colourise_regions_in_types, .out_types =colourise_regions_out_types, .in_unique =colourise_regions_in_unique, .out_unique =colourise_regions_out_unique}, {.name ="region_label_naive", .f =call_region_label_naive, .tuning_params =region_label_naive_tuning_params, .in_types =region_label_naive_in_types, .out_types =region_label_naive_out_types, .in_unique =region_label_naive_in_unique, .out_unique =region_label_naive_out_unique}, {.name =NULL}};
+struct entry_point entry_points[] = {{.name ="colourise_regions", .f =call_colourise_regions, .tuning_params =colourise_regions_tuning_params, .in_types =colourise_regions_in_types, .out_types =colourise_regions_out_types, .in_unique =colourise_regions_in_unique, .out_unique =colourise_regions_out_unique}, {.name ="region_label_naive", .f =call_region_label_naive, .tuning_params =region_label_naive_tuning_params, .in_types =region_label_naive_in_types, .out_types =region_label_naive_out_types, .in_unique =region_label_naive_in_unique, .out_unique =region_label_naive_out_unique}, {.name ="region_label_smarter", .f =call_region_label_smarter, .tuning_params =region_label_smarter_tuning_params, .in_types =region_label_smarter_in_types, .out_types =region_label_smarter_out_types, .in_unique =region_label_smarter_in_unique, .out_unique =region_label_smarter_out_unique}, {.name =NULL}};
 struct futhark_prog prog = {.types =types, .entry_points =entry_points};
 int parse_options(struct futhark_context_config *cfg, int argc, char *const argv[])
 {
@@ -5540,7 +5553,8 @@ struct memblock {
 struct constants {
     int dummy;
 };
-static int8_t region_label_naivezistatic_array_realtype_6943[4] = { (int8_t) 1,(int8_t) 3,(int8_t) 0,(int8_t) 2};
+static int8_t region_label_naivezistatic_array_realtype_13360[4] = { (int8_t) 1,(int8_t) 3,(int8_t) 0,(int8_t) 2};
+static int8_t region_label_smarterzistatic_array_realtype_13386[4] = { (int8_t) 1,(int8_t) 2,(int8_t) 0,(int8_t) 3};
 struct tuning_params {
     int dummy;
 };
@@ -6221,8 +6235,9 @@ GEN_LMAD_COPY(8b, uint64_t)
 
 #define FUTHARK_FUN_ATTR static
 
-FUTHARK_FUN_ATTR int futrts_entry_colourise_regions(struct futhark_context *ctx, struct memblock *mem_out_p_6940, struct memblock labels_mem_6902, int64_t h_6302, int64_t w_6303);
-FUTHARK_FUN_ATTR int futrts_entry_region_label_naive(struct futhark_context *ctx, struct memblock *mem_out_p_6941, struct memblock img_mem_6902, int64_t h_6248, int64_t w_6249);
+FUTHARK_FUN_ATTR int futrts_entry_colourise_regions(struct futhark_context *ctx, struct memblock *mem_out_p_13356, struct memblock labels_mem_12988, int64_t h_8749, int64_t w_8750);
+FUTHARK_FUN_ATTR int futrts_entry_region_label_naive(struct futhark_context *ctx, struct memblock *mem_out_p_13357, struct memblock img_mem_12988, int64_t h_8695, int64_t w_8696);
+FUTHARK_FUN_ATTR int futrts_entry_region_label_smarter(struct futhark_context *ctx, struct memblock *mem_out_p_13361, struct memblock img_mem_12988, int64_t h_10796, int64_t w_10797);
 
 static int init_constants(struct futhark_context *ctx)
 {
@@ -6414,471 +6429,1840 @@ const int64_t *futhark_shape_i64_2d(struct futhark_context *ctx, struct futhark_
     return arr->shape;
 }
 
-FUTHARK_FUN_ATTR int futrts_entry_colourise_regions(struct futhark_context *ctx, struct memblock *mem_out_p_6940, struct memblock labels_mem_6902, int64_t h_6302, int64_t w_6303)
+FUTHARK_FUN_ATTR int futrts_entry_colourise_regions(struct futhark_context *ctx, struct memblock *mem_out_p_13356, struct memblock labels_mem_12988, int64_t h_8749, int64_t w_8750)
 {
     (void) ctx;
     
     int err = 0;
-    struct memblock mem_6905;
+    struct memblock mem_12991;
     
-    mem_6905.references = NULL;
+    mem_12991.references = NULL;
     
-    struct memblock mem_out_6929;
+    struct memblock mem_out_13305;
     
-    mem_out_6929.references = NULL;
-    // regionlabeling.fut:62:44-64:24
+    mem_out_13305.references = NULL;
+    // regionlabeling.fut:63:44-65:24
     
-    int64_t binop_x_6903 = (int64_t) 4 * h_6302;
+    int64_t binop_x_12989 = (int64_t) 4 * h_8749;
     
-    // regionlabeling.fut:62:44-64:24
+    // regionlabeling.fut:63:44-65:24
     
-    int64_t bytes_6904 = w_6303 * binop_x_6903;
+    int64_t bytes_12990 = w_8750 * binop_x_12989;
     
-    // regionlabeling.fut:62:44-64:24
-    if (memblock_alloc(ctx, &mem_6905, bytes_6904, "mem_6905")) {
+    // regionlabeling.fut:63:44-65:24
+    if (memblock_alloc(ctx, &mem_12991, bytes_12990, "mem_12991")) {
         err = 1;
         goto cleanup;
     }
-    // regionlabeling.fut:62:44-64:24
-    for (int64_t i_6895 = 0; i_6895 < h_6302; i_6895++) {
-        // regionlabeling.fut:62:44-64:24
-        for (int64_t i_6891 = 0; i_6891 < w_6303; i_6891++) {
-            int64_t eta_p_6558 = ((int64_t *) labels_mem_6902.mem)[i_6895 * w_6303 + i_6891];
+    // regionlabeling.fut:63:44-65:24
+    for (int64_t i_12707 = 0; i_12707 < h_8749; i_12707++) {
+        // regionlabeling.fut:63:44-65:24
+        for (int64_t i_12703 = 0; i_12703 < w_8750; i_12703++) {
+            int64_t eta_p_11277 = ((int64_t *) labels_mem_12988.mem)[i_12707 * w_8750 + i_12703];
             
-            // regionlabeling.fut:63:13-22
+            // regionlabeling.fut:64:13-22
             
-            int32_t unsign_arg0_6559 = zext_i64_i32(eta_p_6558);
+            int32_t unsign_arg0_11278 = zext_i64_i32(eta_p_11277);
             
-            ((int32_t *) mem_6905.mem)[i_6895 * w_6303 + i_6891] = unsign_arg0_6559;
+            ((int32_t *) mem_12991.mem)[i_12707 * w_8750 + i_12703] = unsign_arg0_11278;
         }
     }
-    if (memblock_set(ctx, &mem_out_6929, &mem_6905, "mem_6905") != 0)
+    if (memblock_set(ctx, &mem_out_13305, &mem_12991, "mem_12991") != 0)
         return 1;
-    if (memblock_set(ctx, &*mem_out_p_6940, &mem_out_6929, "mem_out_6929") != 0)
+    if (memblock_set(ctx, &*mem_out_p_13356, &mem_out_13305, "mem_out_13305") != 0)
         return 1;
     
   cleanup:
     {
-        if (memblock_unref(ctx, &mem_6905, "mem_6905") != 0)
+        if (memblock_unref(ctx, &mem_12991, "mem_12991") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_out_6929, "mem_out_6929") != 0)
+        if (memblock_unref(ctx, &mem_out_13305, "mem_out_13305") != 0)
             return 1;
     }
     return err;
 }
-FUTHARK_FUN_ATTR int futrts_entry_region_label_naive(struct futhark_context *ctx, struct memblock *mem_out_p_6941, struct memblock img_mem_6902, int64_t h_6248, int64_t w_6249)
+FUTHARK_FUN_ATTR int futrts_entry_region_label_naive(struct futhark_context *ctx, struct memblock *mem_out_p_13357, struct memblock img_mem_12988, int64_t h_8695, int64_t w_8696)
 {
     (void) ctx;
     
     int err = 0;
-    int64_t mem_6905_cached_sizze_6942 = 0;
-    unsigned char *mem_6905 = NULL;
-    struct memblock mem_6922;
+    int64_t mem_12991_cached_sizze_13358 = 0;
+    unsigned char *mem_12991 = NULL;
+    int64_t mem_13012_cached_sizze_13359 = 0;
+    unsigned char *mem_13012 = NULL;
+    struct memblock mem_13029;
     
-    mem_6922.references = NULL;
+    mem_13029.references = NULL;
     
-    struct memblock mem_param_tmp_6934;
+    struct memblock mem_param_tmp_13310;
     
-    mem_param_tmp_6934.references = NULL;
+    mem_param_tmp_13310.references = NULL;
     
-    struct memblock mem_6910;
+    struct memblock mem_13017;
     
-    mem_6910.references = NULL;
+    mem_13017.references = NULL;
     
-    struct memblock mem_param_6908;
+    struct memblock mem_param_13015;
     
-    mem_param_6908.references = NULL;
+    mem_param_13015.references = NULL;
     
-    struct memblock ext_mem_6919;
+    struct memblock ext_mem_13026;
     
-    ext_mem_6919.references = NULL;
+    ext_mem_13026.references = NULL;
     
-    struct memblock mem_6904;
+    struct memblock mem_13010;
     
-    mem_6904.references = NULL;
+    mem_13010.references = NULL;
     
-    struct memblock mem_out_6929;
+    struct memblock mem_out_13305;
     
-    mem_out_6929.references = NULL;
-    // regionlabeling.fut:58:25-30
+    mem_out_13305.references = NULL;
     
-    int64_t dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606 = mul64(h_6248, w_6249);
+    int64_t dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494 = mul64(h_8695, w_8696);
     
-    // regionlabeling.fut:44:36-44
+    // regionlabeling.fut:43:30-71
     
-    bool bounds_invalid_upwards_6607 = slt64(dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606, (int64_t) 0);
+    int64_t binop_x_12989 = (int64_t) 8 * h_8695;
     
-    // regionlabeling.fut:44:36-44
+    // regionlabeling.fut:43:30-71
     
-    bool valid_6608 = !bounds_invalid_upwards_6607;
+    int64_t bytes_12990 = w_8696 * binop_x_12989;
     
-    // regionlabeling.fut:44:36-44
-    
-    bool range_valid_c_6609;
-    
-    if (!valid_6608) {
-        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Range ", (long long) (int64_t) 0, "..", (long long) (int64_t) 1, "..<", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606, " is invalid.", "-> #0  regionlabeling.fut:44:36-44\n"));
-        err = FUTHARK_PROGRAM_ERROR;
-        goto cleanup;
-    }
-    // regionlabeling.fut:44:21-45
-    
-    int64_t bytes_6903 = (int64_t) 8 * dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606;
-    bool all_equal_6888;
-    bool redout_6889 = 1;
-    
-    for (int64_t i_6890 = 0; i_6890 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606; i_6890++) {
-        bool binlam_res_6718 = (int64_t) -1 == i_6890;
-        bool binlam_res_6618 = binlam_res_6718 && redout_6889;
-        bool redout_tmp_6930 = binlam_res_6618;
-        
-        redout_6889 = redout_tmp_6930;
-    }
-    all_equal_6888 = redout_6889;
-    // regionlabeling.fut:30:45-49
-    
-    bool zzero_6627 = w_6249 == (int64_t) 0;
-    
-    // regionlabeling.fut:30:45-49
-    
-    bool nonzzero_6628 = !zzero_6627;
-    bool protect_assert_disj_6687 = nonzzero_6628 || all_equal_6888;
-    
-    // regionlabeling.fut:30:45-49
-    
-    bool nonzzero_cert_6629;
-    
-    if (!protect_assert_disj_6687) {
-        set_error(ctx, msgprintf("Error: %s\n\nBacktrace:\n%s", "division by zero", "-> #0  regionlabeling.fut:30:45-49\n   #1  regionlabeling.fut:47:17-34\n"));
-        err = FUTHARK_PROGRAM_ERROR;
-        goto cleanup;
-    }
-    
-    int64_t binop_x_6920 = (int64_t) 8 * h_6248;
-    int64_t bytes_6921 = w_6249 * binop_x_6920;
-    
-    // regionlabeling.fut:44:21-45
-    if (memblock_alloc(ctx, &mem_6904, bytes_6903, "mem_6904")) {
-        err = 1;
-        goto cleanup;
-    }
-    // regionlabeling.fut:44:21-45
-    for (int64_t i_6931 = 0; i_6931 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606; i_6931++) {
-        int64_t x_6932 = (int64_t) 0 + i_6931 * (int64_t) 1;
-        
-        ((int64_t *) mem_6904.mem)[i_6931] = x_6932;
-    }
-    // regionlabeling.fut:45:18-57:36
-    
-    bool loop_cond_6619 = !all_equal_6888;
-    
-    // regionlabeling.fut:49:24-52:27
-    if (mem_6905_cached_sizze_6942 < (int64_t) 4) {
-        err = lexical_realloc(ctx, &mem_6905, &mem_6905_cached_sizze_6942, (int64_t) 4);
+    // regionlabeling.fut:43:30-71
+    if (mem_12991_cached_sizze_13358 < bytes_12990) {
+        err = lexical_realloc(ctx, &mem_12991, &mem_12991_cached_sizze_13358, bytes_12990);
         if (err != FUTHARK_SUCCESS)
             goto cleanup;
     }
-    // regionlabeling.fut:49:24-52:27
+    // regionlabeling.fut:43:30-71
+    for (int64_t i_12707 = 0; i_12707 < h_8695; i_12707++) {
+        // regionlabeling.fut:27:47-50
+        
+        int64_t zp_lhs_11509 = mul64(w_8696, i_12707);
+        
+        // regionlabeling.fut:43:30-71
+        for (int64_t i_12703 = 0; i_12703 < w_8696; i_12703++) {
+            // regionlabeling.fut:27:51-54
+            
+            int64_t flat_pos_res_11512 = add64(zp_lhs_11509, i_12703);
+            
+            ((int64_t *) mem_12991)[i_12707 * w_8696 + i_12703] = flat_pos_res_11512;
+        }
+    }
     
-    struct memblock region_label_naivezistatic_array_6933 = (struct memblock) {NULL, (unsigned char *) region_label_naivezistatic_array_realtype_6943, 0, "region_label_naive.static_array_6933"};
+    bool all_equal_12488;
+    bool redout_12709 = 1;
     
-    // regionlabeling.fut:49:24-52:27
-    lmad_copy_1b(ctx, 1, (uint8_t *) mem_6905, (int64_t) 0, (int64_t []) {(int64_t) 1}, (uint8_t *) region_label_naivezistatic_array_6933.mem, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
-    // regionlabeling.fut:45:18-57:36
+    for (int64_t i_12710 = 0; i_12710 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494; i_12710++) {
+        int64_t new_index_12820 = squot64(i_12710, w_8696);
+        int64_t binop_y_12822 = w_8696 * new_index_12820;
+        int64_t new_index_12823 = i_12710 - binop_y_12822;
+        int64_t y_12274 = ((int64_t *) mem_12991)[new_index_12820 * w_8696 + new_index_12823];
+        bool binlam_res_12275 = (int64_t) -1 == y_12274;
+        bool binlam_res_11525 = binlam_res_12275 && redout_12709;
+        bool redout_tmp_13308 = binlam_res_11525;
+        
+        redout_12709 = redout_tmp_13308;
+    }
+    all_equal_12488 = redout_12709;
+    // regionlabeling.fut:30:45-49
     
-    bool res_6621;
-    bool loop_while_6623;
+    bool zzero_11537 = w_8696 == (int64_t) 0;
     
-    if (memblock_set(ctx, &mem_param_6908, &mem_6904, "mem_6904") != 0)
+    // regionlabeling.fut:30:45-49
+    
+    bool nonzzero_11538 = !zzero_11537;
+    bool protect_assert_disj_12232 = nonzzero_11538 || all_equal_12488;
+    
+    // regionlabeling.fut:30:45-49
+    
+    bool nonzzero_cert_11539;
+    
+    if (!protect_assert_disj_12232) {
+        set_error(ctx, msgprintf("Error: %s\n\nBacktrace:\n%s", "division by zero", "-> #0  regionlabeling.fut:30:45-49\n   #1  regionlabeling.fut:49:26-43\n"));
+        err = FUTHARK_PROGRAM_ERROR;
+        goto cleanup;
+    }
+    if (memblock_alloc(ctx, &mem_13010, bytes_12990, "mem_13010")) {
+        err = 1;
+        goto cleanup;
+    }
+    lmad_copy_8b(ctx, 2, (uint64_t *) mem_13010.mem, (int64_t) 0, (int64_t []) {w_8696, (int64_t) 1}, (uint64_t *) mem_12991, (int64_t) 0, (int64_t []) {w_8696, (int64_t) 1}, (int64_t []) {h_8695, w_8696});
+    // regionlabeling.fut:45:5-59:38
+    
+    bool loop_cond_11526 = !all_equal_12488;
+    
+    // regionlabeling.fut:52:18-55:38
+    if (mem_13012_cached_sizze_13359 < (int64_t) 4) {
+        err = lexical_realloc(ctx, &mem_13012, &mem_13012_cached_sizze_13359, (int64_t) 4);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:52:18-55:38
+    
+    struct memblock region_label_naivezistatic_array_13309 = (struct memblock) {NULL, (unsigned char *) region_label_naivezistatic_array_realtype_13360, 0, "region_label_naive.static_array_13309"};
+    
+    // regionlabeling.fut:52:18-55:38
+    lmad_copy_1b(ctx, 1, (uint8_t *) mem_13012, (int64_t) 0, (int64_t []) {(int64_t) 1}, (uint8_t *) region_label_naivezistatic_array_13309.mem, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+    // regionlabeling.fut:48:9-58:24
+    
+    int64_t bytes_13016 = (int64_t) 8 * dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494;
+    
+    // regionlabeling.fut:45:5-59:38
+    
+    bool res_11531;
+    bool loop_while_11533;
+    
+    if (memblock_set(ctx, &mem_param_13015, &mem_13010, "mem_13010") != 0)
         return 1;
-    loop_while_6623 = loop_cond_6619;
-    while (loop_while_6623) {
-        // regionlabeling.fut:46:22-56:15
-        if (memblock_alloc(ctx, &mem_6910, bytes_6903, "mem_6910")) {
+    loop_while_11533 = loop_cond_11526;
+    while (loop_while_11533) {
+        // regionlabeling.fut:48:9-58:24
+        if (memblock_alloc(ctx, &mem_13017, bytes_13016, "mem_13017")) {
             err = 1;
             goto cleanup;
         }
-        // regionlabeling.fut:46:22-56:15
+        // regionlabeling.fut:48:9-58:24
         
-        bool all_equal_6886;
-        bool redout_6894 = 1;
+        bool all_equal_12485;
+        bool redout_12714 = 1;
         
-        for (int64_t i_6896 = 0; i_6896 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_6606; i_6896++) {
+        for (int64_t i_12716 = 0; i_12716 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494; i_12716++) {
+            int64_t new_index_12816 = squot64(i_12716, w_8696);
+            int64_t binop_y_12818 = w_8696 * new_index_12816;
+            int64_t new_index_12819 = i_12716 - binop_y_12818;
+            int64_t eta_p_12284 = ((int64_t *) mem_12991)[new_index_12816 * w_8696 + new_index_12819];
+            
             // regionlabeling.fut:30:45-49
             
-            int64_t tmp_6728 = squot64(i_6896, w_6249);
+            int64_t tmp_12286 = squot64(eta_p_12284, w_8696);
             
             // regionlabeling.fut:30:53-57
             
-            int64_t tmp_6729 = srem64(i_6896, w_6249);
+            int64_t tmp_12287 = srem64(eta_p_12284, w_8696);
             
             // regionlabeling.fut:38:3-10
             
-            bool x_6730 = sle64((int64_t) 0, tmp_6728);
+            bool x_12288 = sle64((int64_t) 0, tmp_12286);
             
             // regionlabeling.fut:38:3-10
             
-            bool y_6731 = slt64(tmp_6728, h_6248);
+            bool y_12289 = slt64(tmp_12286, h_8695);
             
             // regionlabeling.fut:38:3-10
             
-            bool bounds_check_6732 = x_6730 && y_6731;
+            bool bounds_check_12290 = x_12288 && y_12289;
             
             // regionlabeling.fut:38:3-10
             
-            bool x_6733 = sle64((int64_t) 0, tmp_6729);
+            bool x_12291 = sle64((int64_t) 0, tmp_12287);
             
             // regionlabeling.fut:38:3-10
             
-            bool y_6734 = slt64(tmp_6729, w_6249);
+            bool y_12292 = slt64(tmp_12287, w_8696);
             
             // regionlabeling.fut:38:3-10
             
-            bool bounds_check_6735 = x_6733 && y_6734;
+            bool bounds_check_12293 = x_12291 && y_12292;
             
             // regionlabeling.fut:38:3-10
             
-            bool index_ok_6736 = bounds_check_6732 && bounds_check_6735;
+            bool index_ok_12294 = bounds_check_12290 && bounds_check_12293;
             
             // regionlabeling.fut:38:3-10
             
-            bool index_certs_6737;
+            bool index_certs_12295;
             
-            if (!index_ok_6736) {
-                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_6728, ", ", (long long) tmp_6729, "] out of bounds for array of shape [", (long long) h_6248, "][", (long long) w_6249, "].", "-> #0  regionlabeling.fut:38:3-10\n   #1  regionlabeling.fut:47:11-48:30\n"));
+            if (!index_ok_12294) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_12286, ", ", (long long) tmp_12287, "] out of bounds for array of shape [", (long long) h_8695, "][", (long long) w_8696, "].", "-> #0  regionlabeling.fut:38:3-10\n   #1  regionlabeling.fut:49:20-50:39\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:57:34-54
+            
+            bool y_12340 = slt64(eta_p_12284, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494);
+            
+            // regionlabeling.fut:57:34-54
+            
+            bool x_12339 = sle64((int64_t) 0, eta_p_12284);
+            
+            // regionlabeling.fut:57:34-54
+            
+            bool bounds_check_12341 = x_12339 && y_12340;
+            
+            // regionlabeling.fut:57:34-54
+            
+            bool index_certs_12342;
+            
+            if (!bounds_check_12341) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12284, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494, "].", "-> #0  regionlabeling.fut:57:34-54\n"));
                 err = FUTHARK_PROGRAM_ERROR;
                 goto cleanup;
             }
             
-            int64_t x_6727 = ((int64_t *) mem_param_6908.mem)[i_6896];
+            int64_t x_12285 = ((int64_t *) mem_param_13015.mem)[i_12716];
             
             // regionlabeling.fut:38:3-10
             
-            int32_t get_res_6738 = ((int32_t *) img_mem_6902.mem)[tmp_6728 * w_6249 + tmp_6729];
+            int32_t get_res_12296 = ((int32_t *) img_mem_12988.mem)[tmp_12286 * w_8696 + tmp_12287];
             
-            // regionlabeling.fut:49:24-54:65
+            // regionlabeling.fut:57:34-54
             
-            int64_t defunc_0_reduce_comm_res_6885;
-            int64_t redout_6891 = i_6896;
+            int64_t reduce_arg1_12343 = ((int64_t *) mem_param_13015.mem)[eta_p_12284];
             
-            for (int64_t i_6892 = 0; i_6892 < (int64_t) 4; i_6892++) {
-                int8_t eta_p_6801 = ((int8_t *) mem_6905)[i_6892];
+            // regionlabeling.fut:52:18-57:72
+            
+            int64_t defunc_0_reduce_res_12484;
+            int64_t redout_12711 = reduce_arg1_12343;
+            
+            for (int64_t i_12712 = 0; i_12712 < (int64_t) 4; i_12712++) {
+                int8_t eta_p_12374 = ((int8_t *) mem_13012)[i_12712];
                 
                 // regionlabeling.fut:20:3-24:24
                 
-                int64_t move_res_6802;
-                int64_t move_res_6803;
+                int64_t move_res_12375;
+                int64_t move_res_12376;
                 
-                if (eta_p_6801 == (int8_t) 1) {
+                if (eta_p_12374 == (int8_t) 1) {
                     // regionlabeling.fut:21:17-20
                     
-                    int64_t tmp_6876 = sub64(tmp_6728, (int64_t) 1);
+                    int64_t tmp_12470 = sub64(tmp_12286, (int64_t) 1);
                     
-                    move_res_6802 = tmp_6876;
-                    move_res_6803 = tmp_6729;
-                } else if (eta_p_6801 == (int8_t) 3) {
+                    move_res_12375 = tmp_12470;
+                    move_res_12376 = tmp_12287;
+                } else if (eta_p_12374 == (int8_t) 3) {
                     // regionlabeling.fut:22:20-23
                     
-                    int64_t tmp_6877 = sub64(tmp_6729, (int64_t) 1);
+                    int64_t tmp_12471 = sub64(tmp_12287, (int64_t) 1);
                     
-                    move_res_6802 = tmp_6728;
-                    move_res_6803 = tmp_6877;
-                } else if (eta_p_6801 == (int8_t) 0) {
+                    move_res_12375 = tmp_12286;
+                    move_res_12376 = tmp_12471;
+                } else if (eta_p_12374 == (int8_t) 0) {
                     // regionlabeling.fut:23:20-23
                     
-                    int64_t tmp_6878 = add64((int64_t) 1, tmp_6729);
+                    int64_t tmp_12472 = add64((int64_t) 1, tmp_12287);
                     
-                    move_res_6802 = tmp_6728;
-                    move_res_6803 = tmp_6878;
+                    move_res_12375 = tmp_12286;
+                    move_res_12376 = tmp_12472;
                 } else {
                     // regionlabeling.fut:24:17-20
                     
-                    int64_t tmp_6807 = add64((int64_t) 1, tmp_6728);
+                    int64_t tmp_12380 = add64((int64_t) 1, tmp_12286);
                     
-                    move_res_6802 = tmp_6807;
-                    move_res_6803 = tmp_6729;
+                    move_res_12375 = tmp_12380;
+                    move_res_12376 = tmp_12287;
                 }
                 // regionlabeling.fut:34:3-37
                 
-                bool cond_6808 = sle64((int64_t) 0, move_res_6802);
+                bool cond_12381 = sle64((int64_t) 0, move_res_12375);
                 
                 // regionlabeling.fut:34:15-18
                 
-                bool cond_t_res_6809 = slt64(move_res_6802, h_6248);
+                bool cond_t_res_12382 = slt64(move_res_12375, h_8695);
                 
-                // regionlabeling.fut:51:12-91
+                // regionlabeling.fut:54:28-92
                 
-                bool x_6810 = cond_6808 && cond_t_res_6809;
+                bool x_12383 = cond_12381 && cond_t_res_12382;
                 
                 // regionlabeling.fut:34:24-28
                 
-                bool cond_t_res_6811 = sle64((int64_t) 0, move_res_6803);
+                bool cond_t_res_12384 = sle64((int64_t) 0, move_res_12376);
                 
-                // regionlabeling.fut:51:12-91
+                // regionlabeling.fut:54:28-92
                 
-                bool x_6812 = x_6810 && cond_t_res_6811;
+                bool x_12385 = x_12383 && cond_t_res_12384;
                 
                 // regionlabeling.fut:34:34-37
                 
-                bool in_bounds_res_t_res_6813 = slt64(move_res_6803, w_6249);
+                bool in_bounds_res_t_res_12386 = slt64(move_res_12376, w_8696);
                 
-                // regionlabeling.fut:51:12-91
+                // regionlabeling.fut:54:28-92
                 
-                bool x_6814 = x_6812 && in_bounds_res_t_res_6813;
+                bool x_12387 = x_12385 && in_bounds_res_t_res_12386;
                 
-                // regionlabeling.fut:49:24-52:27
+                // regionlabeling.fut:52:18-55:38
                 
-                int64_t lifted_lambda_res_6815;
+                int64_t lifted_lambda_res_12388;
                 
-                if (x_6814) {
-                    lifted_lambda_res_6815 = move_res_6802;
+                if (x_12387) {
+                    lifted_lambda_res_12388 = move_res_12375;
                 } else {
-                    lifted_lambda_res_6815 = (int64_t) -1;
+                    lifted_lambda_res_12388 = (int64_t) -1;
                 }
-                // regionlabeling.fut:49:24-52:27
+                // regionlabeling.fut:52:18-55:38
                 
-                int64_t lifted_lambda_res_6816;
+                int64_t lifted_lambda_res_12389;
                 
-                if (x_6814) {
-                    lifted_lambda_res_6816 = move_res_6803;
+                if (x_12387) {
+                    lifted_lambda_res_12389 = move_res_12376;
                 } else {
-                    lifted_lambda_res_6816 = (int64_t) -1;
+                    lifted_lambda_res_12389 = (int64_t) -1;
                 }
-                // regionlabeling.fut:49:24-52:27
+                // regionlabeling.fut:52:18-55:38
                 
-                int32_t lifted_lambda_res_6817;
+                int32_t lifted_lambda_res_12390;
                 
-                if (x_6814) {
+                if (x_12387) {
                     // regionlabeling.fut:38:3-10
                     
-                    bool bounds_check_6879 = cond_t_res_6811 && in_bounds_res_t_res_6813;
-                    
-                    // regionlabeling.fut:38:3-10
-                    
-                    bool index_ok_6880 = x_6810 && bounds_check_6879;
+                    bool bounds_check_12473 = cond_t_res_12384 && in_bounds_res_t_res_12386;
                     
                     // regionlabeling.fut:38:3-10
                     
-                    bool index_certs_6881;
+                    bool index_ok_12474 = x_12383 && bounds_check_12473;
                     
-                    if (!index_ok_6880) {
-                        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) move_res_6802, ", ", (long long) move_res_6803, "] out of bounds for array of shape [", (long long) h_6248, "][", (long long) w_6249, "].", "-> #0  regionlabeling.fut:38:3-10\n   #1  regionlabeling.fut:50:13-51:73\n"));
+                    // regionlabeling.fut:38:3-10
+                    
+                    bool index_certs_12475;
+                    
+                    if (!index_ok_12474) {
+                        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) move_res_12375, ", ", (long long) move_res_12376, "] out of bounds for array of shape [", (long long) h_8695, "][", (long long) w_8696, "].", "-> #0  regionlabeling.fut:38:3-10\n   #1  regionlabeling.fut:53:29-54:74\n"));
                         err = FUTHARK_PROGRAM_ERROR;
                         goto cleanup;
                     }
                     // regionlabeling.fut:38:3-10
                     
-                    int32_t get_res_6882 = ((int32_t *) img_mem_6902.mem)[move_res_6802 * w_6249 + move_res_6803];
+                    int32_t get_res_12476 = ((int32_t *) img_mem_12988.mem)[move_res_12375 * w_8696 + move_res_12376];
                     
-                    lifted_lambda_res_6817 = get_res_6882;
+                    lifted_lambda_res_12390 = get_res_12476;
                 } else {
-                    lifted_lambda_res_6817 = 0;
+                    lifted_lambda_res_12390 = 0;
                 }
-                // regionlabeling.fut:53:50-113
+                // regionlabeling.fut:56:59-138
                 
-                bool cond_6825 = lifted_lambda_res_6817 == get_res_6738;
-                bool eq_x_y_6835 = (int64_t) -1 == move_res_6802;
-                bool p_and_eq_x_y_6837 = x_6814 && eq_x_y_6835;
-                bool not_p_6838 = !x_6814;
-                bool cond_t_res_6826 = p_and_eq_x_y_6837 || not_p_6838;
-                bool eq_x_y_6840 = (int64_t) -1 == move_res_6803;
-                bool p_and_eq_x_y_6842 = x_6814 && eq_x_y_6840;
-                bool cond_t_res_6827 = not_p_6838 || p_and_eq_x_y_6842;
+                bool cond_12398 = lifted_lambda_res_12390 == get_res_12296;
+                bool eq_x_y_12413 = (int64_t) -1 == move_res_12375;
+                bool p_and_eq_x_y_12415 = x_12387 && eq_x_y_12413;
+                bool not_p_12416 = !x_12387;
+                bool cond_t_res_12399 = p_and_eq_x_y_12415 || not_p_12416;
+                bool eq_x_y_12418 = (int64_t) -1 == move_res_12376;
+                bool p_and_eq_x_y_12420 = x_12387 && eq_x_y_12418;
+                bool cond_t_res_12400 = not_p_12416 || p_and_eq_x_y_12420;
                 
-                // regionlabeling.fut:53:72-81
+                // regionlabeling.fut:56:81-90
                 
-                bool eq_6828 = cond_t_res_6826 && cond_t_res_6827;
+                bool eq_12401 = cond_t_res_12399 && cond_t_res_12400;
                 
-                // regionlabeling.fut:53:72-81
+                // regionlabeling.fut:56:81-90
                 
-                bool cond_t_res_6829 = !eq_6828;
+                bool cond_t_res_12402 = !eq_12401;
                 
-                // regionlabeling.fut:53:31-125
+                // regionlabeling.fut:56:40-150
                 
-                bool x_6830 = cond_6825 && cond_t_res_6829;
+                bool x_12403 = cond_12398 && cond_t_res_12402;
                 
-                // regionlabeling.fut:53:50-113
+                // regionlabeling.fut:56:59-138
                 
-                int64_t lifted_lambda_res_6831;
+                int64_t lifted_lambda_res_12404;
                 
-                if (x_6830) {
+                if (x_12403) {
                     // regionlabeling.fut:27:47-50
                     
-                    int64_t zp_lhs_6883 = mul64(w_6249, lifted_lambda_res_6815);
+                    int64_t zp_lhs_12477 = mul64(w_8696, lifted_lambda_res_12388);
                     
                     // regionlabeling.fut:27:51-54
                     
-                    int64_t flat_pos_res_6884 = add64(lifted_lambda_res_6816, zp_lhs_6883);
+                    int64_t flat_pos_res_12478 = add64(lifted_lambda_res_12389, zp_lhs_12477);
                     
-                    lifted_lambda_res_6831 = flat_pos_res_6884;
+                    // regionlabeling.fut:56:96-127
+                    
+                    bool x_12479 = sle64((int64_t) 0, flat_pos_res_12478);
+                    
+                    // regionlabeling.fut:56:96-127
+                    
+                    bool y_12480 = slt64(flat_pos_res_12478, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494);
+                    
+                    // regionlabeling.fut:56:96-127
+                    
+                    bool bounds_check_12481 = x_12479 && y_12480;
+                    
+                    // regionlabeling.fut:56:96-127
+                    
+                    bool index_certs_12482;
+                    
+                    if (!bounds_check_12481) {
+                        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) flat_pos_res_12478, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11494, "].", "-> #0  regionlabeling.fut:56:96-127\n"));
+                        err = FUTHARK_PROGRAM_ERROR;
+                        goto cleanup;
+                    }
+                    // regionlabeling.fut:56:96-127
+                    
+                    int64_t lifted_lambda_res_t_res_12483 = ((int64_t *) mem_param_13015.mem)[flat_pos_res_12478];
+                    
+                    lifted_lambda_res_12404 = lifted_lambda_res_t_res_12483;
                 } else {
-                    lifted_lambda_res_6831 = (int64_t) -1;
+                    lifted_lambda_res_12404 = (int64_t) -1;
                 }
-                // regionlabeling.fut:54:35-42
+                // regionlabeling.fut:57:26-33
                 
-                int64_t max_res_6780 = smax64(lifted_lambda_res_6831, redout_6891);
-                int64_t redout_tmp_6939 = max_res_6780;
+                int64_t max_res_12348 = smax64(lifted_lambda_res_12404, redout_12711);
+                int64_t redout_tmp_13315 = max_res_12348;
                 
-                redout_6891 = redout_tmp_6939;
+                redout_12711 = redout_tmp_13315;
             }
-            defunc_0_reduce_comm_res_6885 = redout_6891;
+            defunc_0_reduce_res_12484 = redout_12711;
             
-            bool binlam_res_6782 = x_6727 == defunc_0_reduce_comm_res_6885;
-            bool binlam_res_6681 = binlam_res_6782 && redout_6894;
+            bool binlam_res_12350 = x_12285 == defunc_0_reduce_res_12484;
+            bool binlam_res_11595 = binlam_res_12350 && redout_12714;
             
-            ((int64_t *) mem_6910.mem)[i_6896] = defunc_0_reduce_comm_res_6885;
+            ((int64_t *) mem_13017.mem)[i_12716] = defunc_0_reduce_res_12484;
             
-            bool redout_tmp_6937 = binlam_res_6681;
+            bool redout_tmp_13313 = binlam_res_11595;
             
-            redout_6894 = redout_tmp_6937;
+            redout_12714 = redout_tmp_13313;
         }
-        all_equal_6886 = redout_6894;
-        // regionlabeling.fut:45:106-123
+        all_equal_12485 = redout_12714;
+        // regionlabeling.fut:46:23-40
         
-        bool loop_cond_6682 = !all_equal_6886;
+        bool loop_cond_11596 = !all_equal_12485;
         
-        if (memblock_set(ctx, &mem_param_tmp_6934, &mem_6910, "mem_6910") != 0)
+        if (memblock_set(ctx, &mem_param_tmp_13310, &mem_13017, "mem_13017") != 0)
             return 1;
         
-        bool loop_while_tmp_6935 = loop_cond_6682;
+        bool loop_while_tmp_13311 = loop_cond_11596;
         
-        if (memblock_set(ctx, &mem_param_6908, &mem_param_tmp_6934, "mem_param_tmp_6934") != 0)
+        if (memblock_set(ctx, &mem_param_13015, &mem_param_tmp_13310, "mem_param_tmp_13310") != 0)
             return 1;
-        loop_while_6623 = loop_while_tmp_6935;
+        loop_while_11533 = loop_while_tmp_13311;
     }
-    if (memblock_set(ctx, &ext_mem_6919, &mem_param_6908, "mem_param_6908") != 0)
+    if (memblock_set(ctx, &ext_mem_13026, &mem_param_13015, "mem_param_13015") != 0)
         return 1;
-    res_6621 = loop_while_6623;
-    if (memblock_unref(ctx, &mem_6904, "mem_6904") != 0)
+    res_11531 = loop_while_11533;
+    if (memblock_unref(ctx, &mem_13010, "mem_13010") != 0)
         return 1;
-    if (memblock_alloc(ctx, &mem_6922, bytes_6921, "mem_6922")) {
+    if (memblock_alloc(ctx, &mem_13029, bytes_12990, "mem_13029")) {
         err = 1;
         goto cleanup;
     }
-    lmad_copy_8b(ctx, 2, (uint64_t *) mem_6922.mem, (int64_t) 0, (int64_t []) {w_6249, (int64_t) 1}, (uint64_t *) ext_mem_6919.mem, (int64_t) 0, (int64_t []) {(int64_t) 1 * w_6249, (int64_t) 1}, (int64_t []) {h_6248, w_6249});
-    if (memblock_unref(ctx, &ext_mem_6919, "ext_mem_6919") != 0)
+    lmad_copy_8b(ctx, 2, (uint64_t *) mem_13029.mem, (int64_t) 0, (int64_t []) {w_8696, (int64_t) 1}, (uint64_t *) ext_mem_13026.mem, (int64_t) 0, (int64_t []) {(int64_t) 1 * w_8696, (int64_t) 1}, (int64_t []) {h_8695, w_8696});
+    if (memblock_unref(ctx, &ext_mem_13026, "ext_mem_13026") != 0)
         return 1;
-    if (memblock_set(ctx, &mem_out_6929, &mem_6922, "mem_6922") != 0)
+    if (memblock_set(ctx, &mem_out_13305, &mem_13029, "mem_13029") != 0)
         return 1;
-    if (memblock_set(ctx, &*mem_out_p_6941, &mem_out_6929, "mem_out_6929") != 0)
+    if (memblock_set(ctx, &*mem_out_p_13357, &mem_out_13305, "mem_out_13305") != 0)
         return 1;
     
   cleanup:
     {
-        free(mem_6905);
-        if (memblock_unref(ctx, &mem_6922, "mem_6922") != 0)
+        free(mem_12991);
+        free(mem_13012);
+        if (memblock_unref(ctx, &mem_13029, "mem_13029") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_param_tmp_6934, "mem_param_tmp_6934") != 0)
+        if (memblock_unref(ctx, &mem_param_tmp_13310, "mem_param_tmp_13310") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_6910, "mem_6910") != 0)
+        if (memblock_unref(ctx, &mem_13017, "mem_13017") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_param_6908, "mem_param_6908") != 0)
+        if (memblock_unref(ctx, &mem_param_13015, "mem_param_13015") != 0)
             return 1;
-        if (memblock_unref(ctx, &ext_mem_6919, "ext_mem_6919") != 0)
+        if (memblock_unref(ctx, &ext_mem_13026, "ext_mem_13026") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_6904, "mem_6904") != 0)
+        if (memblock_unref(ctx, &mem_13010, "mem_13010") != 0)
             return 1;
-        if (memblock_unref(ctx, &mem_out_6929, "mem_out_6929") != 0)
+        if (memblock_unref(ctx, &mem_out_13305, "mem_out_13305") != 0)
+            return 1;
+    }
+    return err;
+}
+FUTHARK_FUN_ATTR int futrts_entry_region_label_smarter(struct futhark_context *ctx, struct memblock *mem_out_p_13361, struct memblock img_mem_12988, int64_t h_10796, int64_t w_10797)
+{
+    (void) ctx;
+    
+    int err = 0;
+    int64_t mem_12989_cached_sizze_13362 = 0;
+    unsigned char *mem_12989 = NULL;
+    int64_t mem_12992_cached_sizze_13363 = 0;
+    unsigned char *mem_12992 = NULL;
+    int64_t mem_12996_cached_sizze_13364 = 0;
+    unsigned char *mem_12996 = NULL;
+    int64_t mem_13000_cached_sizze_13365 = 0;
+    unsigned char *mem_13000 = NULL;
+    int64_t mem_13004_cached_sizze_13366 = 0;
+    unsigned char *mem_13004 = NULL;
+    int64_t mem_13008_cached_sizze_13367 = 0;
+    unsigned char *mem_13008 = NULL;
+    int64_t mem_13070_cached_sizze_13368 = 0;
+    unsigned char *mem_13070 = NULL;
+    int64_t mem_13071_cached_sizze_13369 = 0;
+    unsigned char *mem_13071 = NULL;
+    int64_t mem_13072_cached_sizze_13370 = 0;
+    unsigned char *mem_13072 = NULL;
+    int64_t mem_13073_cached_sizze_13371 = 0;
+    unsigned char *mem_13073 = NULL;
+    int64_t mem_13142_cached_sizze_13372 = 0;
+    unsigned char *mem_13142 = NULL;
+    int64_t mem_13144_cached_sizze_13373 = 0;
+    unsigned char *mem_13144 = NULL;
+    int64_t mem_13158_cached_sizze_13374 = 0;
+    unsigned char *mem_13158 = NULL;
+    int64_t mem_13160_cached_sizze_13375 = 0;
+    unsigned char *mem_13160 = NULL;
+    int64_t mem_13162_cached_sizze_13376 = 0;
+    unsigned char *mem_13162 = NULL;
+    int64_t mem_13164_cached_sizze_13377 = 0;
+    unsigned char *mem_13164 = NULL;
+    int64_t mem_13195_cached_sizze_13378 = 0;
+    unsigned char *mem_13195 = NULL;
+    int64_t mem_13197_cached_sizze_13379 = 0;
+    unsigned char *mem_13197 = NULL;
+    int64_t mem_13211_cached_sizze_13380 = 0;
+    unsigned char *mem_13211 = NULL;
+    int64_t mem_13213_cached_sizze_13381 = 0;
+    unsigned char *mem_13213 = NULL;
+    int64_t mem_13221_cached_sizze_13382 = 0;
+    unsigned char *mem_13221 = NULL;
+    int64_t mem_13223_cached_sizze_13383 = 0;
+    unsigned char *mem_13223 = NULL;
+    int64_t mem_13237_cached_sizze_13384 = 0;
+    unsigned char *mem_13237 = NULL;
+    int64_t mem_13239_cached_sizze_13385 = 0;
+    unsigned char *mem_13239 = NULL;
+    struct memblock mem_13281;
+    
+    mem_13281.references = NULL;
+    
+    struct memblock mem_param_tmp_13351;
+    
+    mem_param_tmp_13351.references = NULL;
+    
+    struct memblock mem_13269;
+    
+    mem_13269.references = NULL;
+    
+    struct memblock mem_param_13267;
+    
+    mem_param_13267.references = NULL;
+    
+    struct memblock ext_mem_13278;
+    
+    ext_mem_13278.references = NULL;
+    
+    struct memblock mem_param_tmp_13331;
+    
+    mem_param_tmp_13331.references = NULL;
+    
+    struct memblock mem_param_tmp_13330;
+    
+    mem_param_tmp_13330.references = NULL;
+    
+    struct memblock mem_13243;
+    
+    mem_13243.references = NULL;
+    
+    struct memblock mem_13241;
+    
+    mem_13241.references = NULL;
+    
+    struct memblock mem_param_13193;
+    
+    mem_param_13193.references = NULL;
+    
+    struct memblock mem_param_13190;
+    
+    mem_param_13190.references = NULL;
+    
+    struct memblock ext_mem_13262;
+    
+    ext_mem_13262.references = NULL;
+    
+    struct memblock ext_mem_13263;
+    
+    ext_mem_13263.references = NULL;
+    
+    struct memblock mem_13183;
+    
+    mem_13183.references = NULL;
+    
+    struct memblock mem_13168;
+    
+    mem_13168.references = NULL;
+    
+    struct memblock mem_13166;
+    
+    mem_13166.references = NULL;
+    
+    struct memblock mem_out_13305;
+    
+    mem_out_13305.references = NULL;
+    
+    int64_t dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903 = mul64(h_10796, w_10797);
+    
+    // regionlabeling.fut:96:62-74
+    
+    int64_t dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905 = mul64((int64_t) 4, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+    
+    // regionlabeling.fut:96:62-74
+    if (mem_12989_cached_sizze_13362 < (int64_t) 4) {
+        err = lexical_realloc(ctx, &mem_12989, &mem_12989_cached_sizze_13362, (int64_t) 4);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:96:62-74
+    
+    struct memblock region_label_smarterzistatic_array_13306 = (struct memblock) {NULL, (unsigned char *) region_label_smarterzistatic_array_realtype_13386, 0, "region_label_smarter.static_array_13306"};
+    
+    // regionlabeling.fut:96:62-74
+    lmad_copy_1b(ctx, 1, (uint8_t *) mem_12989, (int64_t) 0, (int64_t []) {(int64_t) 1}, (uint8_t *) region_label_smarterzistatic_array_13306.mem, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+    // regionlabeling.fut:98:25-66
+    
+    int64_t binop_x_12990 = (int64_t) 8 * h_10796;
+    
+    // regionlabeling.fut:98:25-66
+    
+    int64_t bytes_12991 = w_10797 * binop_x_12990;
+    
+    // regionlabeling.fut:98:25-66
+    if (mem_12992_cached_sizze_13363 < bytes_12991) {
+        err = lexical_realloc(ctx, &mem_12992, &mem_12992_cached_sizze_13363, bytes_12991);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    
+    int64_t bytes_12995 = (int64_t) 4 * bytes_12991;
+    
+    // regionlabeling.fut:98:25-66
+    if (mem_12996_cached_sizze_13364 < bytes_12995) {
+        err = lexical_realloc(ctx, &mem_12996, &mem_12996_cached_sizze_13364, bytes_12995);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    if (mem_13000_cached_sizze_13365 < bytes_12995) {
+        err = lexical_realloc(ctx, &mem_13000, &mem_13000_cached_sizze_13365, bytes_12995);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    if (mem_13004_cached_sizze_13366 < bytes_12995) {
+        err = lexical_realloc(ctx, &mem_13004, &mem_13004_cached_sizze_13366, bytes_12995);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    if (mem_13008_cached_sizze_13367 < bytes_12995) {
+        err = lexical_realloc(ctx, &mem_13008, &mem_13008_cached_sizze_13367, bytes_12995);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    
+    int64_t lmad_arg_13033 = (int64_t) 4 * w_10797;
+    
+    // regionlabeling.fut:84:26-89:69
+    if (mem_13070_cached_sizze_13368 < (int64_t) 32) {
+        err = lexical_realloc(ctx, &mem_13070, &mem_13070_cached_sizze_13368, (int64_t) 32);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:84:26-89:69
+    if (mem_13071_cached_sizze_13369 < (int64_t) 32) {
+        err = lexical_realloc(ctx, &mem_13071, &mem_13071_cached_sizze_13369, (int64_t) 32);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:84:26-89:69
+    if (mem_13072_cached_sizze_13370 < (int64_t) 32) {
+        err = lexical_realloc(ctx, &mem_13072, &mem_13072_cached_sizze_13370, (int64_t) 32);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:84:26-89:69
+    if (mem_13073_cached_sizze_13371 < (int64_t) 32) {
+        err = lexical_realloc(ctx, &mem_13073, &mem_13073_cached_sizze_13371, (int64_t) 32);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:98:25-66
+    for (int64_t i_12740 = 0; i_12740 < h_10796; i_12740++) {
+        // regionlabeling.fut:27:47-50
+        
+        int64_t zp_lhs_12410 = mul64(w_10797, i_12740);
+        
+        // regionlabeling.fut:98:25-66
+        for (int64_t i_12724 = 0; i_12724 < w_10797; i_12724++) {
+            // regionlabeling.fut:38:3-10
+            
+            int32_t get_res_12425 = ((int32_t *) img_mem_12988.mem)[i_12740 * w_10797 + i_12724];
+            
+            // regionlabeling.fut:84:26-89:69
+            for (int64_t i_12709 = 0; i_12709 < (int64_t) 4; i_12709++) {
+                int8_t eta_p_12430 = ((int8_t *) mem_12989)[i_12709];
+                
+                // regionlabeling.fut:20:3-24:24
+                
+                int64_t move_res_12431;
+                int64_t move_res_12432;
+                
+                if (eta_p_12430 == (int8_t) 1) {
+                    // regionlabeling.fut:21:17-20
+                    
+                    int64_t tmp_12648 = sub64(i_12740, (int64_t) 1);
+                    
+                    move_res_12431 = tmp_12648;
+                    move_res_12432 = i_12724;
+                } else if (eta_p_12430 == (int8_t) 3) {
+                    // regionlabeling.fut:22:20-23
+                    
+                    int64_t tmp_12649 = sub64(i_12724, (int64_t) 1);
+                    
+                    move_res_12431 = i_12740;
+                    move_res_12432 = tmp_12649;
+                } else if (eta_p_12430 == (int8_t) 0) {
+                    // regionlabeling.fut:23:20-23
+                    
+                    int64_t tmp_12650 = add64((int64_t) 1, i_12724);
+                    
+                    move_res_12431 = i_12740;
+                    move_res_12432 = tmp_12650;
+                } else {
+                    // regionlabeling.fut:24:17-20
+                    
+                    int64_t tmp_12436 = add64((int64_t) 1, i_12740);
+                    
+                    move_res_12431 = tmp_12436;
+                    move_res_12432 = i_12724;
+                }
+                // regionlabeling.fut:34:3-37
+                
+                bool cond_12437 = sle64((int64_t) 0, move_res_12431);
+                
+                // regionlabeling.fut:34:15-18
+                
+                bool cond_t_res_12438 = slt64(move_res_12431, h_10796);
+                
+                // regionlabeling.fut:86:36-89:57
+                
+                bool x_12439 = cond_12437 && cond_t_res_12438;
+                
+                // regionlabeling.fut:34:24-28
+                
+                bool cond_t_res_12440 = sle64((int64_t) 0, move_res_12432);
+                
+                // regionlabeling.fut:86:36-89:57
+                
+                bool x_12441 = x_12439 && cond_t_res_12440;
+                
+                // regionlabeling.fut:34:34-37
+                
+                bool in_bounds_res_t_res_12442 = slt64(move_res_12432, w_10797);
+                
+                // regionlabeling.fut:86:36-89:57
+                
+                bool x_12443 = x_12441 && in_bounds_res_t_res_12442;
+                
+                // regionlabeling.fut:86:36-89:57
+                
+                bool cond_12444;
+                
+                if (x_12443) {
+                    // regionlabeling.fut:38:3-10
+                    
+                    bool bounds_check_12651 = cond_t_res_12440 && in_bounds_res_t_res_12442;
+                    
+                    // regionlabeling.fut:38:3-10
+                    
+                    bool index_ok_12652 = x_12439 && bounds_check_12651;
+                    
+                    // regionlabeling.fut:38:3-10
+                    
+                    bool index_certs_12653;
+                    
+                    if (!index_ok_12652) {
+                        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) move_res_12431, ", ", (long long) move_res_12432, "] out of bounds for array of shape [", (long long) h_10796, "][", (long long) w_10797, "].", "-> #0  regionlabeling.fut:38:3-10\n   #1  regionlabeling.fut:85:37-87:66\n   #2  regionlabeling.fut:96:62-74\n"));
+                        err = FUTHARK_PROGRAM_ERROR;
+                        goto cleanup;
+                    }
+                    // regionlabeling.fut:38:3-10
+                    
+                    int32_t get_res_12654 = ((int32_t *) img_mem_12988.mem)[move_res_12431 * w_10797 + move_res_12432];
+                    
+                    // regionlabeling.fut:87:45-66
+                    
+                    bool cond_t_res_12655 = get_res_12425 == get_res_12654;
+                    
+                    cond_12444 = cond_t_res_12655;
+                } else {
+                    cond_12444 = 0;
+                }
+                // regionlabeling.fut:84:26-89:69
+                
+                int64_t lifted_lambda_res_12450;
+                
+                if (cond_12444) {
+                    lifted_lambda_res_12450 = i_12740;
+                } else {
+                    lifted_lambda_res_12450 = (int64_t) -1;
+                }
+                // regionlabeling.fut:84:26-89:69
+                
+                int64_t lifted_lambda_res_12451;
+                
+                if (cond_12444) {
+                    lifted_lambda_res_12451 = i_12724;
+                } else {
+                    lifted_lambda_res_12451 = (int64_t) -1;
+                }
+                // regionlabeling.fut:84:26-89:69
+                
+                int64_t lifted_lambda_res_12452;
+                
+                if (cond_12444) {
+                    lifted_lambda_res_12452 = move_res_12431;
+                } else {
+                    lifted_lambda_res_12452 = (int64_t) -1;
+                }
+                // regionlabeling.fut:84:26-89:69
+                
+                int64_t lifted_lambda_res_12453;
+                
+                if (cond_12444) {
+                    lifted_lambda_res_12453 = move_res_12432;
+                } else {
+                    lifted_lambda_res_12453 = (int64_t) -1;
+                }
+                ((int64_t *) mem_13070)[i_12709] = lifted_lambda_res_12450;
+                ((int64_t *) mem_13071)[i_12709] = lifted_lambda_res_12451;
+                ((int64_t *) mem_13072)[i_12709] = lifted_lambda_res_12452;
+                ((int64_t *) mem_13073)[i_12709] = lifted_lambda_res_12453;
+            }
+            // regionlabeling.fut:27:51-54
+            
+            int64_t flat_pos_res_12458 = add64(zp_lhs_12410, i_12724);
+            
+            ((int64_t *) mem_12992)[i_12740 * w_10797 + i_12724] = flat_pos_res_12458;
+            lmad_copy_8b(ctx, 1, (uint64_t *) mem_13008, i_12740 * lmad_arg_13033 + i_12724 * (int64_t) 4, (int64_t []) {(int64_t) 1}, (uint64_t *) mem_13073, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+            lmad_copy_8b(ctx, 1, (uint64_t *) mem_13004, i_12740 * lmad_arg_13033 + i_12724 * (int64_t) 4, (int64_t []) {(int64_t) 1}, (uint64_t *) mem_13072, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+            lmad_copy_8b(ctx, 1, (uint64_t *) mem_13000, i_12740 * lmad_arg_13033 + i_12724 * (int64_t) 4, (int64_t []) {(int64_t) 1}, (uint64_t *) mem_13071, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+            lmad_copy_8b(ctx, 1, (uint64_t *) mem_12996, i_12740 * lmad_arg_13033 + i_12724 * (int64_t) 4, (int64_t []) {(int64_t) 1}, (uint64_t *) mem_13070, (int64_t) 0, (int64_t []) {(int64_t) 1}, (int64_t []) {(int64_t) 4});
+        }
+    }
+    
+    int64_t bytes_13141 = (int64_t) 32 * dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903;
+    
+    // regionlabeling.fut:92:6-58
+    if (mem_13142_cached_sizze_13372 < bytes_13141) {
+        err = lexical_realloc(ctx, &mem_13142, &mem_13142_cached_sizze_13372, bytes_13141);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    if (mem_13144_cached_sizze_13373 < bytes_13141) {
+        err = lexical_realloc(ctx, &mem_13144, &mem_13144_cached_sizze_13373, bytes_13141);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    
+    int64_t discard_12754;
+    int64_t scanacc_12748 = (int64_t) 0;
+    
+    for (int64_t i_12751 = 0; i_12751 < dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905; i_12751++) {
+        int64_t new_index_12901 = squot64(i_12751, lmad_arg_13033);
+        int64_t binop_y_12905 = new_index_12901 * lmad_arg_13033;
+        int64_t binop_x_12906 = i_12751 - binop_y_12905;
+        int64_t new_index_12907 = squot64(binop_x_12906, (int64_t) 4);
+        int64_t binop_y_12919 = (int64_t) 4 * new_index_12907;
+        int64_t new_index_12920 = binop_x_12906 - binop_y_12919;
+        int64_t eta_p_12343 = ((int64_t *) mem_12996)[new_index_12901 * lmad_arg_13033 + new_index_12907 * (int64_t) 4 + new_index_12920];
+        int64_t eta_p_12344 = ((int64_t *) mem_13000)[new_index_12901 * lmad_arg_13033 + new_index_12907 * (int64_t) 4 + new_index_12920];
+        int64_t eta_p_12345 = ((int64_t *) mem_13004)[new_index_12901 * lmad_arg_13033 + new_index_12907 * (int64_t) 4 + new_index_12920];
+        int64_t eta_p_12346 = ((int64_t *) mem_13008)[new_index_12901 * lmad_arg_13033 + new_index_12907 * (int64_t) 4 + new_index_12920];
+        
+        // regionlabeling.fut:92:25-51
+        
+        bool cond_12347 = eta_p_12343 == (int64_t) -1;
+        
+        // regionlabeling.fut:92:25-51
+        
+        bool cond_12348 = eta_p_12344 == (int64_t) -1;
+        
+        // regionlabeling.fut:92:25-51
+        
+        bool eq_12349 = cond_12347 && cond_12348;
+        
+        // regionlabeling.fut:92:25-51
+        
+        bool cond_12350 = !eq_12349;
+        
+        // regionlabeling.fut:92:42-51
+        
+        bool lifted_lambda_res_t_res_12351 = eta_p_12345 == (int64_t) -1;
+        
+        // regionlabeling.fut:92:42-51
+        
+        bool lifted_lambda_res_t_res_12352 = eta_p_12346 == (int64_t) -1;
+        
+        // regionlabeling.fut:92:42-51
+        
+        bool eq_12353 = lifted_lambda_res_t_res_12351 && lifted_lambda_res_t_res_12352;
+        
+        // regionlabeling.fut:92:42-51
+        
+        bool lifted_lambda_res_t_res_12354 = !eq_12353;
+        
+        // regionlabeling.fut:92:6-58
+        
+        bool x_12355 = cond_12350 && lifted_lambda_res_t_res_12354;
+        
+        // regionlabeling.fut:92:6-58
+        
+        int64_t defunc_0_f_res_12356 = btoi_bool_i64(x_12355);
+        
+        // regionlabeling.fut:92:6-58
+        
+        int64_t defunc_0_op_res_11979 = add64(defunc_0_f_res_12356, scanacc_12748);
+        
+        ((int64_t *) mem_13142)[i_12751] = defunc_0_op_res_11979;
+        ((int64_t *) mem_13144)[i_12751] = defunc_0_f_res_12356;
+        
+        int64_t scanacc_tmp_13321 = defunc_0_op_res_11979;
+        
+        scanacc_12748 = scanacc_tmp_13321;
+    }
+    discard_12754 = scanacc_12748;
+    // regionlabeling.fut:92:6-58
+    
+    bool cond_11980 = dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905 == (int64_t) 0;
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool x_11981 = !cond_11980;
+    
+    // regionlabeling.fut:92:6-58
+    
+    int64_t tmp_11982 = sub64(dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905, (int64_t) 1);
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool x_11983 = sle64((int64_t) 0, tmp_11982);
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool y_11984 = slt64(tmp_11982, dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905);
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool bounds_check_11985 = x_11983 && y_11984;
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool protect_assert_disj_11986 = cond_11980 || bounds_check_11985;
+    
+    // regionlabeling.fut:92:6-58
+    
+    bool index_certs_11987;
+    
+    if (!protect_assert_disj_11986) {
+        set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_11982, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905, "].", "-> #0  regionlabeling.fut:92:6-58\n   #1  regionlabeling.fut:96:62-74\n"));
+        err = FUTHARK_PROGRAM_ERROR;
+        goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    
+    int64_t m_f_res_11988;
+    
+    if (x_11981) {
+        // regionlabeling.fut:92:6-58
+        
+        int64_t x_12665 = ((int64_t *) mem_13142)[tmp_11982];
+        
+        m_f_res_11988 = x_12665;
+    } else {
+        m_f_res_11988 = (int64_t) 0;
+    }
+    // regionlabeling.fut:92:6-58
+    
+    int64_t m_11990;
+    
+    if (cond_11980) {
+        m_11990 = (int64_t) 0;
+    } else {
+        m_11990 = m_f_res_11988;
+    }
+    // regionlabeling.fut:92:6-58
+    
+    int64_t bytes_13157 = (int64_t) 8 * m_11990;
+    
+    // regionlabeling.fut:92:6-58
+    if (mem_13158_cached_sizze_13374 < bytes_13157) {
+        err = lexical_realloc(ctx, &mem_13158, &mem_13158_cached_sizze_13374, bytes_13157);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    if (mem_13160_cached_sizze_13375 < bytes_13157) {
+        err = lexical_realloc(ctx, &mem_13160, &mem_13160_cached_sizze_13375, bytes_13157);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    if (mem_13162_cached_sizze_13376 < bytes_13157) {
+        err = lexical_realloc(ctx, &mem_13162, &mem_13162_cached_sizze_13376, bytes_13157);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    if (mem_13164_cached_sizze_13377 < bytes_13157) {
+        err = lexical_realloc(ctx, &mem_13164, &mem_13164_cached_sizze_13377, bytes_13157);
+        if (err != FUTHARK_SUCCESS)
+            goto cleanup;
+    }
+    // regionlabeling.fut:92:6-58
+    
+    bool acc_cert_12281;
+    bool acc_cert_12282;
+    bool acc_cert_12283;
+    bool acc_cert_12284;
+    
+    // regionlabeling.fut:92:6-58
+    for (int64_t i_12759 = 0; i_12759 < dzlz7bUZLztZRz20UZLZLztZRz20Uhz20UwZRz20U4z7dUzg_11905; i_12759++) {
+        int64_t eta_p_12317 = ((int64_t *) mem_13144)[i_12759];
+        int64_t eta_p_12318 = ((int64_t *) mem_13142)[i_12759];
+        int64_t new_index_12817 = squot64(i_12759, lmad_arg_13033);
+        int64_t binop_y_12821 = new_index_12817 * lmad_arg_13033;
+        int64_t binop_x_12822 = i_12759 - binop_y_12821;
+        int64_t new_index_12823 = squot64(binop_x_12822, (int64_t) 4);
+        int64_t binop_y_12835 = (int64_t) 4 * new_index_12823;
+        int64_t new_index_12836 = binop_x_12822 - binop_y_12835;
+        int64_t v_12323 = ((int64_t *) mem_12996)[new_index_12817 * lmad_arg_13033 + new_index_12823 * (int64_t) 4 + new_index_12836];
+        int64_t v_12324 = ((int64_t *) mem_13000)[new_index_12817 * lmad_arg_13033 + new_index_12823 * (int64_t) 4 + new_index_12836];
+        int64_t v_12325 = ((int64_t *) mem_13004)[new_index_12817 * lmad_arg_13033 + new_index_12823 * (int64_t) 4 + new_index_12836];
+        int64_t v_12326 = ((int64_t *) mem_13008)[new_index_12817 * lmad_arg_13033 + new_index_12823 * (int64_t) 4 + new_index_12836];
+        
+        // regionlabeling.fut:92:6-58
+        
+        bool cond_12327 = eta_p_12317 == (int64_t) 1;
+        
+        // regionlabeling.fut:92:6-58
+        
+        int64_t lifted_lambda_res_12328;
+        
+        if (cond_12327) {
+            // regionlabeling.fut:92:6-58
+            
+            int64_t lifted_lambda_res_t_res_12666 = sub64(eta_p_12318, (int64_t) 1);
+            
+            lifted_lambda_res_12328 = lifted_lambda_res_t_res_12666;
+        } else {
+            lifted_lambda_res_12328 = (int64_t) -1;
+        }
+        // regionlabeling.fut:92:6-58
+        // UpdateAcc
+        if (sle64((int64_t) 0, lifted_lambda_res_12328) && slt64(lifted_lambda_res_12328, m_11990)) {
+            ((int64_t *) mem_13164)[lifted_lambda_res_12328] = v_12323;
+        }
+        // regionlabeling.fut:92:6-58
+        // UpdateAcc
+        if (sle64((int64_t) 0, lifted_lambda_res_12328) && slt64(lifted_lambda_res_12328, m_11990)) {
+            ((int64_t *) mem_13162)[lifted_lambda_res_12328] = v_12324;
+        }
+        // regionlabeling.fut:92:6-58
+        // UpdateAcc
+        if (sle64((int64_t) 0, lifted_lambda_res_12328) && slt64(lifted_lambda_res_12328, m_11990)) {
+            ((int64_t *) mem_13160)[lifted_lambda_res_12328] = v_12325;
+        }
+        // regionlabeling.fut:92:6-58
+        // UpdateAcc
+        if (sle64((int64_t) 0, lifted_lambda_res_12328) && slt64(lifted_lambda_res_12328, m_11990)) {
+            ((int64_t *) mem_13158)[lifted_lambda_res_12328] = v_12326;
+        }
+    }
+    // regionlabeling.fut:96:15-74
+    if (memblock_alloc(ctx, &mem_13166, bytes_13157, "mem_13166")) {
+        err = 1;
+        goto cleanup;
+    }
+    // regionlabeling.fut:96:15-74
+    if (memblock_alloc(ctx, &mem_13168, bytes_13157, "mem_13168")) {
+        err = 1;
+        goto cleanup;
+    }
+    // regionlabeling.fut:96:15-74
+    for (int64_t i_12764 = 0; i_12764 < m_11990; i_12764++) {
+        int64_t eta_p_12032 = ((int64_t *) mem_13164)[i_12764];
+        int64_t eta_p_12033 = ((int64_t *) mem_13162)[i_12764];
+        int64_t eta_p_12034 = ((int64_t *) mem_13160)[i_12764];
+        int64_t eta_p_12035 = ((int64_t *) mem_13158)[i_12764];
+        
+        // regionlabeling.fut:27:47-50
+        
+        int64_t zp_lhs_12036 = mul64(w_10797, eta_p_12032);
+        
+        // regionlabeling.fut:27:51-54
+        
+        int64_t flat_pos_res_12037 = add64(eta_p_12033, zp_lhs_12036);
+        
+        // regionlabeling.fut:27:47-50
+        
+        int64_t zp_lhs_12038 = mul64(w_10797, eta_p_12034);
+        
+        // regionlabeling.fut:27:51-54
+        
+        int64_t flat_pos_res_12039 = add64(eta_p_12035, zp_lhs_12038);
+        
+        ((int64_t *) mem_13166.mem)[i_12764] = flat_pos_res_12037;
+        ((int64_t *) mem_13168.mem)[i_12764] = flat_pos_res_12039;
+    }
+    // regionlabeling.fut:100:5-107:33
+    
+    bool loop_cond_12062 = slt64((int64_t) 0, m_11990);
+    
+    if (memblock_alloc(ctx, &mem_13183, bytes_12991, "mem_13183")) {
+        err = 1;
+        goto cleanup;
+    }
+    lmad_copy_8b(ctx, 2, (uint64_t *) mem_13183.mem, (int64_t) 0, (int64_t []) {w_10797, (int64_t) 1}, (uint64_t *) mem_12992, (int64_t) 0, (int64_t []) {w_10797, (int64_t) 1}, (int64_t []) {h_10796, w_10797});
+    // regionlabeling.fut:100:5-107:33
+    
+    int64_t forestzq_12066;
+    bool forestzq_12067;
+    int64_t loop_dz2081Uz2085U_12071;
+    bool loop_while_12072;
+    
+    if (memblock_set(ctx, &mem_param_13190, &mem_13166, "mem_13166") != 0)
+        return 1;
+    if (memblock_set(ctx, &mem_param_13193, &mem_13168, "mem_13168") != 0)
+        return 1;
+    loop_dz2081Uz2085U_12071 = m_11990;
+    loop_while_12072 = loop_cond_12062;
+    while (loop_while_12072) {
+        // regionlabeling.fut:101:28-68
+        
+        int64_t bytes_13194 = (int64_t) 8 * loop_dz2081Uz2085U_12071;
+        
+        // regionlabeling.fut:101:28-68
+        if (mem_13195_cached_sizze_13378 < bytes_13194) {
+            err = lexical_realloc(ctx, &mem_13195, &mem_13195_cached_sizze_13378, bytes_13194);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:101:28-68
+        if (mem_13197_cached_sizze_13379 < bytes_13194) {
+            err = lexical_realloc(ctx, &mem_13197, &mem_13197_cached_sizze_13379, bytes_13194);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:101:28-68
+        
+        int64_t discard_12775;
+        int64_t scanacc_12769 = (int64_t) 0;
+        
+        for (int64_t i_12772 = 0; i_12772 < loop_dz2081Uz2085U_12071; i_12772++) {
+            int64_t eta_p_12589 = ((int64_t *) mem_param_13190.mem)[i_12772];
+            
+            // regionlabeling.fut:101:47-56
+            
+            bool x_12590 = sle64((int64_t) 0, eta_p_12589);
+            
+            // regionlabeling.fut:101:47-56
+            
+            bool y_12591 = slt64(eta_p_12589, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:101:47-56
+            
+            bool bounds_check_12592 = x_12590 && y_12591;
+            
+            // regionlabeling.fut:101:47-56
+            
+            bool index_certs_12593;
+            
+            if (!bounds_check_12592) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12589, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:101:47-56\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:101:47-56
+            
+            int64_t zeze_lhs_12594 = ((int64_t *) mem_13183.mem)[eta_p_12589];
+            
+            // regionlabeling.fut:101:57-61
+            
+            bool lifted_lambda_res_12595 = zeze_lhs_12594 == eta_p_12589;
+            
+            // regionlabeling.fut:101:28-68
+            
+            int64_t defunc_0_f_res_12596 = btoi_bool_i64(lifted_lambda_res_12595);
+            
+            // regionlabeling.fut:101:28-68
+            
+            int64_t defunc_0_op_res_12089 = add64(defunc_0_f_res_12596, scanacc_12769);
+            
+            ((int64_t *) mem_13195)[i_12772] = defunc_0_op_res_12089;
+            ((int64_t *) mem_13197)[i_12772] = defunc_0_f_res_12596;
+            
+            int64_t scanacc_tmp_13337 = defunc_0_op_res_12089;
+            
+            scanacc_12769 = scanacc_tmp_13337;
+        }
+        discard_12775 = scanacc_12769;
+        // regionlabeling.fut:101:28-68
+        
+        bool cond_12090 = loop_dz2081Uz2085U_12071 == (int64_t) 0;
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool x_12091 = !cond_12090;
+        
+        // regionlabeling.fut:101:28-68
+        
+        int64_t tmp_12092 = sub64(loop_dz2081Uz2085U_12071, (int64_t) 1);
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool x_12093 = sle64((int64_t) 0, tmp_12092);
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool y_12094 = slt64(tmp_12092, loop_dz2081Uz2085U_12071);
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool bounds_check_12095 = x_12093 && y_12094;
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool protect_assert_disj_12096 = cond_12090 || bounds_check_12095;
+        
+        // regionlabeling.fut:101:28-68
+        
+        bool index_certs_12097;
+        
+        if (!protect_assert_disj_12096) {
+            set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_12092, "] out of bounds for array of shape [", (long long) loop_dz2081Uz2085U_12071, "].", "-> #0  regionlabeling.fut:101:28-68\n"));
+            err = FUTHARK_PROGRAM_ERROR;
+            goto cleanup;
+        }
+        // regionlabeling.fut:101:28-68
+        
+        int64_t m_f_res_12098;
+        
+        if (x_12091) {
+            // regionlabeling.fut:101:28-68
+            
+            int64_t x_12672 = ((int64_t *) mem_13195)[tmp_12092];
+            
+            m_f_res_12098 = x_12672;
+        } else {
+            m_f_res_12098 = (int64_t) 0;
+        }
+        // regionlabeling.fut:101:28-68
+        
+        int64_t m_12100;
+        
+        if (cond_12090) {
+            m_12100 = (int64_t) 0;
+        } else {
+            m_12100 = m_f_res_12098;
+        }
+        // regionlabeling.fut:101:28-68
+        
+        int64_t bytes_13210 = (int64_t) 8 * m_12100;
+        
+        // regionlabeling.fut:101:28-68
+        if (mem_13211_cached_sizze_13380 < bytes_13210) {
+            err = lexical_realloc(ctx, &mem_13211, &mem_13211_cached_sizze_13380, bytes_13210);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:101:28-68
+        if (mem_13213_cached_sizze_13381 < bytes_13210) {
+            err = lexical_realloc(ctx, &mem_13213, &mem_13213_cached_sizze_13381, bytes_13210);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:101:28-68
+        
+        bool acc_cert_12549;
+        bool acc_cert_12550;
+        
+        // regionlabeling.fut:101:28-68
+        for (int64_t i_12778 = 0; i_12778 < loop_dz2081Uz2085U_12071; i_12778++) {
+            int64_t eta_p_12571 = ((int64_t *) mem_13197)[i_12778];
+            int64_t eta_p_12572 = ((int64_t *) mem_13195)[i_12778];
+            int64_t v_12575 = ((int64_t *) mem_param_13190.mem)[i_12778];
+            int64_t v_12576 = ((int64_t *) mem_param_13193.mem)[i_12778];
+            
+            // regionlabeling.fut:101:28-68
+            
+            bool cond_12577 = eta_p_12571 == (int64_t) 1;
+            
+            // regionlabeling.fut:101:28-68
+            
+            int64_t lifted_lambda_res_12578;
+            
+            if (cond_12577) {
+                // regionlabeling.fut:101:28-68
+                
+                int64_t lifted_lambda_res_t_res_12673 = sub64(eta_p_12572, (int64_t) 1);
+                
+                lifted_lambda_res_12578 = lifted_lambda_res_t_res_12673;
+            } else {
+                lifted_lambda_res_12578 = (int64_t) -1;
+            }
+            // regionlabeling.fut:101:28-68
+            // UpdateAcc
+            if (sle64((int64_t) 0, lifted_lambda_res_12578) && slt64(lifted_lambda_res_12578, m_12100)) {
+                ((int64_t *) mem_13213)[lifted_lambda_res_12578] = v_12575;
+            }
+            // regionlabeling.fut:101:28-68
+            // UpdateAcc
+            if (sle64((int64_t) 0, lifted_lambda_res_12578) && slt64(lifted_lambda_res_12578, m_12100)) {
+                ((int64_t *) mem_13211)[lifted_lambda_res_12578] = v_12576;
+            }
+        }
+        // regionlabeling.fut:104:24-75
+        for (int64_t iter_12779 = 0; iter_12779 < m_12100; iter_12779++) {
+            int64_t pixel_12781 = ((int64_t *) mem_13213)[iter_12779];
+            int64_t pixel_12782 = ((int64_t *) mem_13211)[iter_12779];
+            bool less_than_zzero_12783 = slt64(pixel_12781, (int64_t) 0);
+            bool greater_than_sizze_12784 = sle64(dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, pixel_12781);
+            bool outside_bounds_dim_12785 = less_than_zzero_12783 || greater_than_sizze_12784;
+            
+            if (!outside_bounds_dim_12785) {
+                int64_t read_hist_12787 = ((int64_t *) mem_13183.mem)[pixel_12781];
+                
+                // regionlabeling.fut:104:47-54
+                
+                int64_t max_res_12127 = smax64(pixel_12782, read_hist_12787);
+                
+                ((int64_t *) mem_13183.mem)[pixel_12781] = max_res_12127;
+            }
+        }
+        // regionlabeling.fut:105:32-76
+        if (mem_13221_cached_sizze_13382 < bytes_13194) {
+            err = lexical_realloc(ctx, &mem_13221, &mem_13221_cached_sizze_13382, bytes_13194);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:105:32-76
+        if (mem_13223_cached_sizze_13383 < bytes_13194) {
+            err = lexical_realloc(ctx, &mem_13223, &mem_13223_cached_sizze_13383, bytes_13194);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:105:32-76
+        
+        int64_t discard_12798;
+        int64_t scanacc_12792 = (int64_t) 0;
+        
+        for (int64_t i_12795 = 0; i_12795 < loop_dz2081Uz2085U_12071; i_12795++) {
+            int64_t eta_p_12537 = ((int64_t *) mem_param_13190.mem)[i_12795];
+            
+            // regionlabeling.fut:105:51-64
+            
+            bool x_12538 = sle64((int64_t) 0, eta_p_12537);
+            
+            // regionlabeling.fut:105:51-64
+            
+            bool y_12539 = slt64(eta_p_12537, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:105:51-64
+            
+            bool bounds_check_12540 = x_12538 && y_12539;
+            
+            // regionlabeling.fut:105:51-64
+            
+            bool index_certs_12541;
+            
+            if (!bounds_check_12540) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12537, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:105:51-64\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:105:51-64
+            
+            int64_t znze_lhs_12542 = ((int64_t *) mem_13183.mem)[eta_p_12537];
+            
+            // regionlabeling.fut:105:65-69
+            
+            bool lifted_lambda_res_12543 = znze_lhs_12542 == eta_p_12537;
+            
+            // regionlabeling.fut:105:65-69
+            
+            bool lifted_lambda_res_12544 = !lifted_lambda_res_12543;
+            
+            // regionlabeling.fut:105:32-76
+            
+            int64_t defunc_0_f_res_12545 = btoi_bool_i64(lifted_lambda_res_12544);
+            
+            // regionlabeling.fut:105:32-76
+            
+            int64_t defunc_0_op_res_12144 = add64(defunc_0_f_res_12545, scanacc_12792);
+            
+            ((int64_t *) mem_13221)[i_12795] = defunc_0_op_res_12144;
+            ((int64_t *) mem_13223)[i_12795] = defunc_0_f_res_12545;
+            
+            int64_t scanacc_tmp_13343 = defunc_0_op_res_12144;
+            
+            scanacc_12792 = scanacc_tmp_13343;
+        }
+        discard_12798 = scanacc_12792;
+        // regionlabeling.fut:105:32-76
+        
+        int64_t m_f_res_12153;
+        
+        if (x_12091) {
+            // regionlabeling.fut:105:32-76
+            
+            int64_t x_12677 = ((int64_t *) mem_13221)[tmp_12092];
+            
+            m_f_res_12153 = x_12677;
+        } else {
+            m_f_res_12153 = (int64_t) 0;
+        }
+        // regionlabeling.fut:105:32-76
+        
+        int64_t m_12155;
+        
+        if (cond_12090) {
+            m_12155 = (int64_t) 0;
+        } else {
+            m_12155 = m_f_res_12153;
+        }
+        // regionlabeling.fut:105:32-76
+        
+        int64_t bytes_13236 = (int64_t) 8 * m_12155;
+        
+        // regionlabeling.fut:105:32-76
+        if (mem_13237_cached_sizze_13384 < bytes_13236) {
+            err = lexical_realloc(ctx, &mem_13237, &mem_13237_cached_sizze_13384, bytes_13236);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:105:32-76
+        if (mem_13239_cached_sizze_13385 < bytes_13236) {
+            err = lexical_realloc(ctx, &mem_13239, &mem_13239_cached_sizze_13385, bytes_13236);
+            if (err != FUTHARK_SUCCESS)
+                goto cleanup;
+        }
+        // regionlabeling.fut:105:32-76
+        
+        bool acc_cert_12497;
+        bool acc_cert_12498;
+        
+        // regionlabeling.fut:105:32-76
+        for (int64_t i_12801 = 0; i_12801 < loop_dz2081Uz2085U_12071; i_12801++) {
+            int64_t eta_p_12519 = ((int64_t *) mem_13223)[i_12801];
+            int64_t eta_p_12520 = ((int64_t *) mem_13221)[i_12801];
+            int64_t v_12523 = ((int64_t *) mem_param_13190.mem)[i_12801];
+            int64_t v_12524 = ((int64_t *) mem_param_13193.mem)[i_12801];
+            
+            // regionlabeling.fut:105:32-76
+            
+            bool cond_12525 = eta_p_12519 == (int64_t) 1;
+            
+            // regionlabeling.fut:105:32-76
+            
+            int64_t lifted_lambda_res_12526;
+            
+            if (cond_12525) {
+                // regionlabeling.fut:105:32-76
+                
+                int64_t lifted_lambda_res_t_res_12678 = sub64(eta_p_12520, (int64_t) 1);
+                
+                lifted_lambda_res_12526 = lifted_lambda_res_t_res_12678;
+            } else {
+                lifted_lambda_res_12526 = (int64_t) -1;
+            }
+            // regionlabeling.fut:105:32-76
+            // UpdateAcc
+            if (sle64((int64_t) 0, lifted_lambda_res_12526) && slt64(lifted_lambda_res_12526, m_12155)) {
+                ((int64_t *) mem_13239)[lifted_lambda_res_12526] = v_12523;
+            }
+            // regionlabeling.fut:105:32-76
+            // UpdateAcc
+            if (sle64((int64_t) 0, lifted_lambda_res_12526) && slt64(lifted_lambda_res_12526, m_12155)) {
+                ((int64_t *) mem_13237)[lifted_lambda_res_12526] = v_12524;
+            }
+        }
+        // regionlabeling.fut:106:23-89
+        if (memblock_alloc(ctx, &mem_13241, bytes_13236, "mem_13241")) {
+            err = 1;
+            goto cleanup;
+        }
+        // regionlabeling.fut:106:23-89
+        if (memblock_alloc(ctx, &mem_13243, bytes_13236, "mem_13243")) {
+            err = 1;
+            goto cleanup;
+        }
+        // regionlabeling.fut:106:23-89
+        for (int64_t i_12806 = 0; i_12806 < m_12155; i_12806++) {
+            int64_t eta_p_12181 = ((int64_t *) mem_13239)[i_12806];
+            int64_t eta_p_12182 = ((int64_t *) mem_13237)[i_12806];
+            
+            // regionlabeling.fut:106:40-53
+            
+            bool x_12183 = sle64((int64_t) 0, eta_p_12181);
+            
+            // regionlabeling.fut:106:40-53
+            
+            bool y_12184 = slt64(eta_p_12181, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:106:40-53
+            
+            bool bounds_check_12185 = x_12183 && y_12184;
+            
+            // regionlabeling.fut:106:40-53
+            
+            bool index_certs_12186;
+            
+            if (!bounds_check_12185) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12181, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:106:40-53\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:106:55-68
+            
+            bool x_12188 = sle64((int64_t) 0, eta_p_12182);
+            
+            // regionlabeling.fut:106:55-68
+            
+            bool y_12189 = slt64(eta_p_12182, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:106:55-68
+            
+            bool bounds_check_12190 = x_12188 && y_12189;
+            
+            // regionlabeling.fut:106:55-68
+            
+            bool index_certs_12191;
+            
+            if (!bounds_check_12190) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12182, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:106:55-68\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:106:40-53
+            
+            int64_t tmp_12187 = ((int64_t *) mem_13183.mem)[eta_p_12181];
+            
+            // regionlabeling.fut:106:55-68
+            
+            int64_t tmp_12192 = ((int64_t *) mem_13183.mem)[eta_p_12182];
+            
+            ((int64_t *) mem_13241.mem)[i_12806] = tmp_12187;
+            ((int64_t *) mem_13243.mem)[i_12806] = tmp_12192;
+        }
+        // regionlabeling.fut:100:45-48
+        
+        bool loop_cond_12193 = slt64((int64_t) 0, m_12155);
+        
+        if (memblock_set(ctx, &mem_param_tmp_13330, &mem_13241, "mem_13241") != 0)
+            return 1;
+        if (memblock_set(ctx, &mem_param_tmp_13331, &mem_13243, "mem_13243") != 0)
+            return 1;
+        
+        int64_t loop_dz2081Uz2085U_tmp_13332 = m_12155;
+        bool loop_while_tmp_13333 = loop_cond_12193;
+        
+        if (memblock_set(ctx, &mem_param_13190, &mem_param_tmp_13330, "mem_param_tmp_13330") != 0)
+            return 1;
+        if (memblock_set(ctx, &mem_param_13193, &mem_param_tmp_13331, "mem_param_tmp_13331") != 0)
+            return 1;
+        loop_dz2081Uz2085U_12071 = loop_dz2081Uz2085U_tmp_13332;
+        loop_while_12072 = loop_while_tmp_13333;
+    }
+    if (memblock_set(ctx, &ext_mem_13263, &mem_param_13190, "mem_param_13190") != 0)
+        return 1;
+    if (memblock_set(ctx, &ext_mem_13262, &mem_param_13193, "mem_param_13193") != 0)
+        return 1;
+    forestzq_12066 = loop_dz2081Uz2085U_12071;
+    forestzq_12067 = loop_while_12072;
+    if (memblock_unref(ctx, &mem_13166, "mem_13166") != 0)
+        return 1;
+    if (memblock_unref(ctx, &mem_13168, "mem_13168") != 0)
+        return 1;
+    
+    bool all_equal_12700;
+    bool redout_12809 = 1;
+    
+    for (int64_t i_12810 = 0; i_12810 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903; i_12810++) {
+        int64_t y_12274 = ((int64_t *) mem_13183.mem)[i_12810];
+        bool binlam_res_12275 = (int64_t) -1 == y_12274;
+        bool binlam_res_12201 = binlam_res_12275 && redout_12809;
+        bool redout_tmp_13350 = binlam_res_12201;
+        
+        redout_12809 = redout_tmp_13350;
+    }
+    all_equal_12700 = redout_12809;
+    // regionlabeling.fut:109:5-111:69
+    
+    bool loop_cond_12202 = !all_equal_12700;
+    
+    // regionlabeling.fut:111:20-68
+    
+    int64_t bytes_13268 = (int64_t) 8 * dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903;
+    
+    // regionlabeling.fut:109:5-111:69
+    
+    bool labels_flat_12203;
+    bool loop_while_12205;
+    
+    if (memblock_set(ctx, &mem_param_13267, &mem_13183, "mem_13183") != 0)
+        return 1;
+    loop_while_12205 = loop_cond_12202;
+    while (loop_while_12205) {
+        // regionlabeling.fut:111:20-68
+        if (memblock_alloc(ctx, &mem_13269, bytes_13268, "mem_13269")) {
+            err = 1;
+            goto cleanup;
+        }
+        // regionlabeling.fut:111:20-68
+        
+        bool all_equal_12689;
+        bool redout_12812 = 1;
+        
+        for (int64_t i_12814 = 0; i_12814 < dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903; i_12814++) {
+            int64_t eta_p_12631 = ((int64_t *) mem_param_13267.mem)[i_12814];
+            
+            // regionlabeling.fut:111:42-55
+            
+            bool x_12633 = sle64((int64_t) 0, eta_p_12631);
+            
+            // regionlabeling.fut:111:42-55
+            
+            bool y_12634 = slt64(eta_p_12631, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:111:42-55
+            
+            bool bounds_check_12635 = x_12633 && y_12634;
+            
+            // regionlabeling.fut:111:42-55
+            
+            bool index_certs_12636;
+            
+            if (!bounds_check_12635) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) eta_p_12631, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:111:42-55\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:111:42-55
+            
+            int64_t tmp_12637 = ((int64_t *) mem_param_13267.mem)[eta_p_12631];
+            
+            // regionlabeling.fut:111:31-56
+            
+            bool x_12638 = sle64((int64_t) 0, tmp_12637);
+            
+            // regionlabeling.fut:111:31-56
+            
+            bool y_12639 = slt64(tmp_12637, dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903);
+            
+            // regionlabeling.fut:111:31-56
+            
+            bool bounds_check_12640 = x_12638 && y_12639;
+            
+            // regionlabeling.fut:111:31-56
+            
+            bool index_certs_12641;
+            
+            if (!bounds_check_12640) {
+                set_error(ctx, msgprintf("Error: %s%lld%s%lld%s\n\nBacktrace:\n%s", "Index [", (long long) tmp_12637, "] out of bounds for array of shape [", (long long) dzlz7bUZLztZRz20Uhz20Uwz7dUzg_11903, "].", "-> #0  regionlabeling.fut:111:31-56\n"));
+                err = FUTHARK_PROGRAM_ERROR;
+                goto cleanup;
+            }
+            // regionlabeling.fut:111:31-56
+            
+            int64_t lifted_lambda_res_12642 = ((int64_t *) mem_param_13267.mem)[tmp_12637];
+            bool binlam_res_12644 = eta_p_12631 == lifted_lambda_res_12642;
+            bool binlam_res_12227 = binlam_res_12644 && redout_12812;
+            
+            ((int64_t *) mem_13269.mem)[i_12814] = lifted_lambda_res_12642;
+            
+            bool redout_tmp_13354 = binlam_res_12227;
+            
+            redout_12812 = redout_tmp_13354;
+        }
+        all_equal_12689 = redout_12812;
+        // regionlabeling.fut:110:23-36
+        
+        bool loop_cond_12228 = !all_equal_12689;
+        
+        if (memblock_set(ctx, &mem_param_tmp_13351, &mem_13269, "mem_13269") != 0)
+            return 1;
+        
+        bool loop_while_tmp_13352 = loop_cond_12228;
+        
+        if (memblock_set(ctx, &mem_param_13267, &mem_param_tmp_13351, "mem_param_tmp_13351") != 0)
+            return 1;
+        loop_while_12205 = loop_while_tmp_13352;
+    }
+    if (memblock_set(ctx, &ext_mem_13278, &mem_param_13267, "mem_param_13267") != 0)
+        return 1;
+    labels_flat_12203 = loop_while_12205;
+    if (memblock_unref(ctx, &mem_13183, "mem_13183") != 0)
+        return 1;
+    if (memblock_alloc(ctx, &mem_13281, bytes_12991, "mem_13281")) {
+        err = 1;
+        goto cleanup;
+    }
+    lmad_copy_8b(ctx, 2, (uint64_t *) mem_13281.mem, (int64_t) 0, (int64_t []) {w_10797, (int64_t) 1}, (uint64_t *) ext_mem_13278.mem, (int64_t) 0, (int64_t []) {(int64_t) 1 * w_10797, (int64_t) 1}, (int64_t []) {h_10796, w_10797});
+    if (memblock_unref(ctx, &ext_mem_13278, "ext_mem_13278") != 0)
+        return 1;
+    if (memblock_set(ctx, &mem_out_13305, &mem_13281, "mem_13281") != 0)
+        return 1;
+    if (memblock_set(ctx, &*mem_out_p_13361, &mem_out_13305, "mem_out_13305") != 0)
+        return 1;
+    
+  cleanup:
+    {
+        free(mem_12989);
+        free(mem_12992);
+        free(mem_12996);
+        free(mem_13000);
+        free(mem_13004);
+        free(mem_13008);
+        free(mem_13070);
+        free(mem_13071);
+        free(mem_13072);
+        free(mem_13073);
+        free(mem_13142);
+        free(mem_13144);
+        free(mem_13158);
+        free(mem_13160);
+        free(mem_13162);
+        free(mem_13164);
+        free(mem_13195);
+        free(mem_13197);
+        free(mem_13211);
+        free(mem_13213);
+        free(mem_13221);
+        free(mem_13223);
+        free(mem_13237);
+        free(mem_13239);
+        if (memblock_unref(ctx, &mem_13281, "mem_13281") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_tmp_13351, "mem_param_tmp_13351") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13269, "mem_13269") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_13267, "mem_param_13267") != 0)
+            return 1;
+        if (memblock_unref(ctx, &ext_mem_13278, "ext_mem_13278") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_tmp_13331, "mem_param_tmp_13331") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_tmp_13330, "mem_param_tmp_13330") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13243, "mem_13243") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13241, "mem_13241") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_13193, "mem_param_13193") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_param_13190, "mem_param_13190") != 0)
+            return 1;
+        if (memblock_unref(ctx, &ext_mem_13262, "ext_mem_13262") != 0)
+            return 1;
+        if (memblock_unref(ctx, &ext_mem_13263, "ext_mem_13263") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13183, "mem_13183") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13168, "mem_13168") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_13166, "mem_13166") != 0)
+            return 1;
+        if (memblock_unref(ctx, &mem_out_13305, "mem_out_13305") != 0)
             return 1;
     }
     return err;
@@ -6886,33 +8270,33 @@ FUTHARK_FUN_ATTR int futrts_entry_region_label_naive(struct futhark_context *ctx
 
 int futhark_entry_colourise_regions(struct futhark_context *ctx, struct futhark_u32_2d **out0, const struct futhark_i64_2d *in0)
 {
-    int64_t h_6302 = (int64_t) 0;
-    int64_t w_6303 = (int64_t) 0;
+    int64_t h_8749 = (int64_t) 0;
+    int64_t w_8750 = (int64_t) 0;
     int ret = 0;
     
     lock_lock(&ctx->lock);
     
-    struct memblock mem_out_6929;
+    struct memblock mem_out_13305;
     
-    mem_out_6929.references = NULL;
+    mem_out_13305.references = NULL;
     
-    struct memblock labels_mem_6902;
+    struct memblock labels_mem_12988;
     
-    labels_mem_6902.references = NULL;
-    labels_mem_6902 = in0->mem;
-    h_6302 = in0->shape[0];
-    w_6303 = in0->shape[1];
-    if (!(h_6302 == in0->shape[0] && w_6303 == in0->shape[1])) {
+    labels_mem_12988.references = NULL;
+    labels_mem_12988 = in0->mem;
+    h_8749 = in0->shape[0];
+    w_8750 = in0->shape[1];
+    if (!(h_8749 == in0->shape[0] && w_8750 == in0->shape[1])) {
         ret = 1;
         set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
     }
     if (ret == 0) {
-        ret = futrts_entry_colourise_regions(ctx, &mem_out_6929, labels_mem_6902, h_6302, w_6303);
+        ret = futrts_entry_colourise_regions(ctx, &mem_out_13305, labels_mem_12988, h_8749, w_8750);
         if (ret == 0) {
             assert((*out0 = (struct futhark_u32_2d *) malloc(sizeof(struct futhark_u32_2d))) != NULL);
-            (*out0)->mem = mem_out_6929;
-            (*out0)->shape[0] = h_6302;
-            (*out0)->shape[1] = w_6303;
+            (*out0)->mem = mem_out_13305;
+            (*out0)->shape[0] = h_8749;
+            (*out0)->shape[1] = w_8750;
         }
     }
     lock_unlock(&ctx->lock);
@@ -6920,33 +8304,67 @@ int futhark_entry_colourise_regions(struct futhark_context *ctx, struct futhark_
 }
 int futhark_entry_region_label_naive(struct futhark_context *ctx, struct futhark_i64_2d **out0, const struct futhark_u32_2d *in0)
 {
-    int64_t h_6248 = (int64_t) 0;
-    int64_t w_6249 = (int64_t) 0;
+    int64_t h_8695 = (int64_t) 0;
+    int64_t w_8696 = (int64_t) 0;
     int ret = 0;
     
     lock_lock(&ctx->lock);
     
-    struct memblock mem_out_6929;
+    struct memblock mem_out_13305;
     
-    mem_out_6929.references = NULL;
+    mem_out_13305.references = NULL;
     
-    struct memblock img_mem_6902;
+    struct memblock img_mem_12988;
     
-    img_mem_6902.references = NULL;
-    img_mem_6902 = in0->mem;
-    h_6248 = in0->shape[0];
-    w_6249 = in0->shape[1];
-    if (!(h_6248 == in0->shape[0] && w_6249 == in0->shape[1])) {
+    img_mem_12988.references = NULL;
+    img_mem_12988 = in0->mem;
+    h_8695 = in0->shape[0];
+    w_8696 = in0->shape[1];
+    if (!(h_8695 == in0->shape[0] && w_8696 == in0->shape[1])) {
         ret = 1;
         set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
     }
     if (ret == 0) {
-        ret = futrts_entry_region_label_naive(ctx, &mem_out_6929, img_mem_6902, h_6248, w_6249);
+        ret = futrts_entry_region_label_naive(ctx, &mem_out_13305, img_mem_12988, h_8695, w_8696);
         if (ret == 0) {
             assert((*out0 = (struct futhark_i64_2d *) malloc(sizeof(struct futhark_i64_2d))) != NULL);
-            (*out0)->mem = mem_out_6929;
-            (*out0)->shape[0] = h_6248;
-            (*out0)->shape[1] = w_6249;
+            (*out0)->mem = mem_out_13305;
+            (*out0)->shape[0] = h_8695;
+            (*out0)->shape[1] = w_8696;
+        }
+    }
+    lock_unlock(&ctx->lock);
+    return ret;
+}
+int futhark_entry_region_label_smarter(struct futhark_context *ctx, struct futhark_i64_2d **out0, const struct futhark_u32_2d *in0)
+{
+    int64_t h_10796 = (int64_t) 0;
+    int64_t w_10797 = (int64_t) 0;
+    int ret = 0;
+    
+    lock_lock(&ctx->lock);
+    
+    struct memblock mem_out_13305;
+    
+    mem_out_13305.references = NULL;
+    
+    struct memblock img_mem_12988;
+    
+    img_mem_12988.references = NULL;
+    img_mem_12988 = in0->mem;
+    h_10796 = in0->shape[0];
+    w_10797 = in0->shape[1];
+    if (!(h_10796 == in0->shape[0] && w_10797 == in0->shape[1])) {
+        ret = 1;
+        set_error(ctx, msgprintf("Error: entry point arguments have invalid sizes.\n"));
+    }
+    if (ret == 0) {
+        ret = futrts_entry_region_label_smarter(ctx, &mem_out_13305, img_mem_12988, h_10796, w_10797);
+        if (ret == 0) {
+            assert((*out0 = (struct futhark_i64_2d *) malloc(sizeof(struct futhark_i64_2d))) != NULL);
+            (*out0)->mem = mem_out_13305;
+            (*out0)->shape[0] = h_10796;
+            (*out0)->shape[1] = w_10797;
         }
     }
     lock_unlock(&ctx->lock);

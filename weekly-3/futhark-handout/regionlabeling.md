@@ -68,25 +68,27 @@ def get 'a ((i, j): pos) (g: [][]a) =
 > :img ($loadimg "regions-hard.png")
 ```
 
-![](regionlabeling-img/8396d685445903dbf9201c9a883edf59-img.png)
+![](regionlabeling-img/3efb013355d14add43448131243d2e3a-img.png)
 
 ```futhark
 def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
-  let hw = h * w
-  let labels_flat = map (\z -> z) (iota (hw))
-  let (_, res) = loop (prev_labels, current_labels) = (replicate hw (-1), labels_flat) while prev_labels != current_labels do
-    let new_labels = map (\fpos -> 
-      let pos = unflat_pos w fpos
-      let color = get pos img
-      let neighbours = map (\d -> 
-        let neigh_pos = move d pos
-        in if in_bounds img neigh_pos then (neigh_pos, get neigh_pos img) else (no_pos, 0)
-        ) [#n, #w, #e, #s]
-      let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then flat_pos w npos else -1i64) neighbours
-      let max_label = reduce_comm i64.max fpos same_color_labels
-      in max_label
-    ) (iota hw) 
-    in (current_labels, new_labels)
+  let labels_flat = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
+  let (_, res) =
+    loop (prev_labels, current_labels) = (replicate (h * w) (-1), labels_flat)
+    while prev_labels != current_labels do
+      let new_labels =
+        map (\fpos ->
+               let pos = unflat_pos w fpos
+               let color = get pos img
+               let neighbours =
+                 map (\d ->
+                        let npos = move d pos
+                        in if in_bounds img npos then (npos, get npos img) else (no_pos, 0))
+                     [#n, #w, #e, #s]
+               let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then current_labels[flat_pos w npos] else -1i64) neighbours
+               in reduce i64.max current_labels[fpos] same_color_labels)
+            labels_flat
+      in (current_labels, new_labels)
   in unflatten (res :> [h * w]i64)
 ```
 
@@ -102,7 +104,7 @@ def colourise_regions [h] [w] (labels: [h][w]i64) : [h][w]u32 =
 > :img (colourise_regions (region_label_naive ($loadimg "regions-hard.png")))
 ```
 
-![](regionlabeling-img/b4cbefa773319e3544719390764bdc11-img.png)
+![](regionlabeling-img/954eda44bb1802e5f7236a07b09226d9-img.png)
 
 ```futhark
 type edge = (pos, pos)
@@ -114,3 +116,51 @@ type edge = (pos, pos)
 def norm_edge w ((a, b): edge) : edge =
   if pos_lte w a b then (a, b) else (a, b)
 ```
+
+| Create normalised edges linking all neighbouring pixels with the same
+colour.
+
+```futhark
+def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
+  let directions = [#n, #s, #e, #w]
+  let edges =
+    tabulate_2d h w (\r c ->
+                       let pos = (r, c)
+                       let color = get pos img
+                       let edges =
+                         map (\d ->
+                                let neighbour = move d pos
+                                in if in_bounds img neighbour
+                                   && color == (get neighbour img)
+                                   then (pos, neighbour)
+                                   else (no_pos, no_pos)) directions
+                       in edges)
+    |> flatten_3d
+  in filter (\(a, b) -> a != no_pos && b != no_pos) edges
+
+def region_label_smarter [h] [w] (img: [h][w]u32) =
+  -- Step 1: compute edges.
+  let edges = map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
+  -- Step 2: Initialise DAG.
+  let forest = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
+  let (forest', _) =
+    loop (forest, edges) while length edges > 0 do
+      let possible_edges = filter (\(u, _) -> forest[u] == u) edges
+      let sources = map (.0) possible_edges
+      let targets = map (.1) possible_edges
+      let new_forest = reduce_by_index forest i64.max (-1) sources targets
+      let non_inserted_edges = filter (\(u, _) -> new_forest[u] != u) edges
+      let new_edges = map (\(a, b) -> (new_forest[a], new_forest[b])) non_inserted_edges
+      in (new_forest, new_edges)
+  let (_, labels_flat) =
+    loop (prev_forest, cur_forest) = (replicate (h * w) (-1), forest')
+    while prev_forest != cur_forest do
+      (cur_forest, map (\i -> cur_forest[cur_forest[i]]) cur_forest)
+  in unflatten labels_flat
+```
+
+```
+> :img (colourise_regions (region_label_smarter ($loadimg "regions-hard.png")))
+```
+
+![](regionlabeling-img/e175a60d1a0a43c701a5ad2e760267b1-img.png)

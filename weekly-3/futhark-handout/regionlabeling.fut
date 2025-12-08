@@ -51,7 +51,9 @@ def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
                let neighbours =
                  map (\d ->
                         let npos = move d pos
-                        in if in_bounds img npos then (npos, get npos img) else (no_pos, 0))
+                        in if in_bounds img npos
+                           then (npos, get npos img)
+                           else (no_pos, 0))
                      [#n, #w, #e, #s]
                let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then current_labels[flat_pos w npos] else -1i64) neighbours
                in reduce i64.max current_labels[fpos] same_color_labels)
@@ -75,15 +77,20 @@ def norm_edge w ((a, b): edge) : edge =
 -- | Create normalised edges linking all neighbouring pixels with the same
 -- colour.
 def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
+  let directions = [#n, #s, #e, #w]
   let edges =
     tabulate_2d h w (\r c ->
                        let pos = (r, c)
                        let color = get pos img
-                       let e_neighbour = move #e pos
-                       let s_neighbour = move #s pos
-                       let e_edge = if in_bounds img e_neighbour && color == (get e_neighbour img) then (pos, e_neighbour) else (no_pos, no_pos)
-                       let s_edge = if in_bounds img s_neighbour && color == (get s_neighbour img) then (pos, s_neighbour) else (no_pos, no_pos)
-                       in [e_edge, s_edge])
+                       let edges =
+                         map (\d ->
+                                let neighbour = move d pos
+                                in if in_bounds img neighbour
+                                   && color == (get neighbour img)
+                                   then (pos, neighbour)
+                                   else (no_pos, no_pos))
+                             directions
+                       in edges)
     |> flatten_3d
   in filter (\(a, b) -> a != no_pos && b != no_pos) edges
 
@@ -98,9 +105,9 @@ def region_label_smarter [h] [w] (img: [h][w]u32) =
       let sources = map (.0) possible_edges
       let targets = map (.1) possible_edges
       let new_forest = reduce_by_index forest i64.max (-1) sources targets
-      let new_edges = trace(map (\(a, b) -> (new_forest[a], new_forest[b])) edges)
-      let non_inserted_edges = filter (\(a, b) -> a != b) new_edges
-      in (new_forest, non_inserted_edges)
+      let non_inserted_edges = filter (\(u, _) -> new_forest[u] != u) edges
+      let new_edges = map (\(a, b) -> (new_forest[a], new_forest[b])) non_inserted_edges
+      in (new_forest, new_edges)
   let (_, labels_flat) =
     loop (prev_forest, cur_forest) = (replicate (h * w) (-1), forest')
     while prev_forest != cur_forest do
