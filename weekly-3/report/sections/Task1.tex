@@ -15,7 +15,6 @@ def depths (steps: []step) : [](i64, i32) =
   in zip depth value
 \end{lstlisting}
 
-
 Here we have to convert the steps into items of 1 for down and -1 for up
 operations. Then we can do an exclusive scan and at last remove all the
 elements which originally corresponded to up items as these do not add new
@@ -82,6 +81,49 @@ def subtree_sizes [n] (steps: [n]step) : []i64 =
 
 This approach uses the naive bottom up iteration. Here we have a call to the
 reduce function, followed by a sequential loop, which runs over the depth of
-the tree. This loop calls a filter, map and reduce\_by\_index. 
+the tree. This loop calls a filter, map and reduce\_by\_index. The
+reduce\_by\_index both have work O($N$) and span of O($\lg N$) both of which
+runs over arrays of length equal to the entire steps.
 
+As such, the total work of our algorithm is O($N \times D$) and span O($\lg N
+\times D$), where D denotes the maximum depth of the tree.
 
+\subsection*{Tests}
+The functions were tested as shown below and pass these tests.
+\begin{lstlisting}[language={futhark}]
+-- ==
+-- entry: test_depth
+-- input { "d0 d2 d3 u u d5" }
+-- output {  [0i64, 1, 2, 1] [0i32, 2, 3, 5] }
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {  [0i64, 1, 1, 1, 2, 2, 1, 2] [0i32, 2, 3, 0, 4, 0, 0, 5] }
+-- input { "d1 d2 d3 d4 d5" }
+-- output {  [0i64, 1, 2, 3, 4] [1i32, 2, 3, 4, 5] }
+-- input { "" }
+-- output { empty([0]i64) empty([0]i32) }
+entry test_depth [n] (inp: string [n]) = input.steps inp |> depths |> unzip
+
+-- ==
+-- entry: test_parents
+-- input { "d0 d2 d3 u u d5" }
+-- output {  [0i64, 0, 1, 0] }
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {  [0i64, 0, 0, 0, 3, 3, 0, 6] }
+-- input { "d1 d2 d3 d4 d5" }
+-- output {  [0i64, 0, 1, 2, 3] }
+-- input { "" }
+-- output { empty([0]i64) }
+entry test_parents [n] (inp: string [n]) =
+  let (D, _) = input.steps inp |> depths |> unzip
+  in parents D
+
+-- ==
+-- entry: test_subtree_sizes
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {[14i64, 2, 3, 4, 4, 0, 5, 5]}
+-- input { "d1 d2 d3 d4 d5" }
+-- output {[15i64, 14, 12, 9, 5]}
+-- input { "" }
+-- output { empty([0]i64) }
+entry test_subtree_sizes [n] (inp: string [n]) = input.steps inp |> subtree_sizes
+\end{lstlisting}

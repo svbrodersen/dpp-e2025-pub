@@ -20,9 +20,9 @@ type step = #u | #d i32
 -- [#d 0, #d 2, #d 3, #u, #u, #d 5, #u]
 -- ```
 
-
 type char = u8
 type string [n] = [n]char
+
 module input
   : {
       -- | Parse a string into an array of commands.
@@ -68,15 +68,15 @@ module input
     map (\slice -> to_step (get slice s)) (words s)
 }
 
-
-
 -- ## Task 2.1
 def depths (steps: []step) : [](i64, i32) =
-  let (arr, values, keep) = unzip3 <| map (\s -> 
-    match s
-    case #u -> (-1, -1, false)
-    case #d x -> (1, x, true)
-  ) steps
+  let (arr, values, keep) =
+    unzip3
+    <| map (\s ->
+              match s
+              case #u -> (-1, -1, false)
+              case #d x -> (1, x, true))
+           steps
   let inc_scan_arr = scan (+) 0 arr
   let exc_scan_arr = map2 (\a b -> a - b) inc_scan_arr arr
   let (depth, value, _) = zip3 exc_scan_arr values keep |> filter (\(_, _, b) -> b) |> unzip3
@@ -89,35 +89,43 @@ def parents (D: []i64) : []i64 =
   let n = length D
   let depth_tuple = zip (D :> [n]i64) (iota n)
   let init_array = if length D == 0 then [] else [0]
-  let parents = loop parents = init_array for i' < n - 1 do 
-    let i = i' + 1
-    let search_d = D[i] - 1
-    let search_ds = map (\i -> depth_tuple[i]) (iota i)
-    let (_, p) = reduce_comm (\(d1, i1) (d2, i2) -> 
-      if (d1 == d2) && (d1 == search_d) then 
-        if i1 > i2 then (d1, i1)
-        else (d2, i2)
-      else if d1 == search_d then (d1, i1)
-      else if d2 == search_d then (d2, i2)
-      else (-1,-1)
-    ) (0, -1) search_ds
-    in parents ++ [p]
+  let parents =
+    loop parents = init_array
+    for i' < n - 1 do
+      let i = i' + 1
+      let search_d = D[i] - 1
+      let search_ds = map (\i -> depth_tuple[i]) (iota i)
+      let (_, p) =
+        reduce_comm (\(d1, i1) (d2, i2) ->
+                       if (d1 == d2) && (d1 == search_d)
+                       then if i1 > i2
+                            then (d1, i1)
+                            else (d2, i2)
+                       else if d1 == search_d
+                       then (d1, i1)
+                       else if d2 == search_d
+                       then (d2, i2)
+                       else (-1, -1))
+                    (0, -1)
+                    search_ds
+      in parents ++ [p]
   in parents
 
 -- ## Task 2.3
 
 def subtree_sizes [n] (steps: [n]step) : []i64 =
-  let (D, V) = depths steps |> unzip 
+  let (D, V) = depths steps |> unzip
   let P = parents D
   let n = length D
   let max_depth = reduce i64.max 0 D
-  let (res, _) = loop (res, cur_depth) = (copy V, max_depth) while cur_depth > 0 do
+  let (res, _) =
+    loop (res, cur_depth) = (copy V, max_depth)
+    while cur_depth > 0 do
       let indices = filter (\i -> D[i] == cur_depth) (iota n)
       let values = map (\i -> res[i]) indices
       let parent_indices = map (\i -> P[i]) indices
       in (reduce_by_index res (+) (0) parent_indices values, cur_depth - 1)
   in map i64.i32 res
-
 
 -- ==
 -- entry: test_depth
@@ -141,12 +149,11 @@ entry test_depth [n] (inp: string [n]) = input.steps inp |> depths |> unzip
 -- output {  [0i64, 0, 1, 2, 3] }
 -- input { "" }
 -- output { empty([0]i64) }
-entry test_parents [n] (inp: string [n]) = 
-  let (D, _) =  input.steps inp |> depths |> unzip
+entry test_parents [n] (inp: string [n]) =
+  let (D, _) = input.steps inp |> depths |> unzip
   in parents D
 
-
--- == 
+-- ==
 -- entry: test_subtree_sizes
 -- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
 -- output {[14i64, 2, 3, 4, 4, 0, 5, 5]}
@@ -154,5 +161,4 @@ entry test_parents [n] (inp: string [n]) =
 -- output {[15i64, 14, 12, 9, 5]}
 -- input { "" }
 -- output { empty([0]i64) }
-entry test_subtree_sizes [n] (inp: string [n])= input.steps inp |> subtree_sizes
-
+entry test_subtree_sizes [n] (inp: string [n]) = input.steps inp |> subtree_sizes

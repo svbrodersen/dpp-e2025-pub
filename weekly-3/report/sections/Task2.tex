@@ -1,0 +1,92 @@
+\section{Region Labeling}
+\subsection{Naive region labeling}
+My implementation of the naive algorithm can be seen below.
+\begin{lstlisting}[language={futhark}]
+def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
+  let labels_flat = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
+  let (_, res) =
+    loop (prev_labels, current_labels) = (replicate (h * w) (-1), labels_flat)
+    while prev_labels != current_labels do
+      let new_labels =
+        map (\fpos ->
+               let pos = unflat_pos w fpos
+               let color = get pos img
+               let neighbours =
+                 map (\d ->
+                        let npos = move d pos
+                        in if in_bounds img npos
+                           then (npos, get npos img)
+                           else (no_pos, 0))
+                     [#n, #w, #e, #s]
+               let same_color_labels = map (\(npos, c) -> if c == color && npos != no_pos then current_labels[flat_pos w npos] else -1i64) neighbours
+               in reduce i64.max current_labels[fpos] same_color_labels)
+            labels_flat
+      in (current_labels, new_labels)
+  in unflatten (res :> [h * w]i64)
+\end{lstlisting}
+
+The implementation maps over all the pixels in the images. It checks which
+neighbours have the same color, and the neighbours without the same color are
+set to -1, such that they are not chosen in the reduce.
+
+Inside the loop we have a map function, which runs over all pixels in the
+image. Inside the map, we do a constant amount of work (although we do have a
+map it is always over the neighbours and the same with the reduce). As such the
+inside of the loop has work O($N$) and span O($1$). However, figuring out how
+many times the loop runs is a little more tricky. 
+
+If the entire image is all the same color, then we will have to propagate the
+largest label throughout the entire image. This label would be in the bottom
+right corner of the image. At each iteration it moves one pixel in each
+direction, so before reaching the top left corner, it would have to do $H + W$
+iterations, where H is the height and W is the width. As the loop is
+sequential, this gives us a total work of O($O \times (H + W)$) and span of
+O($H + W$). Note that $H + W - 1 =< H * W = N$\footnote{the -1 comes as in the
+example before we should not count the bottom left corner twice.} as both H and
+W are greater or equal to 1.
+
+\subsection{Enlightened region labeling}
+Below my code for the algorithm can be seen.
+\begin{lstlisting}[language={futhark}]
+def norm_edge' (a: i64, b: i64) : (i64, i64) =
+  if a <= b then (a, b) else (b, a)
+
+-- | Create normalised edges linking all neighbouring pixels with the same
+-- colour.
+def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
+  let directions = [#n, #w, #s, #e]
+  let edges =
+    tabulate_2d h w (\r c ->
+                       let pos = (r, c)
+                       let color = get pos img
+                       let edges =
+                         map (\d ->
+                                let neighbour = move d pos
+                                in if in_bounds img neighbour
+                                   && color == (get neighbour img)
+                                   then norm_edge w (pos, neighbour)
+                                   else (no_pos, no_pos))
+                             directions
+                       in edges)
+    |> flatten_3d
+    |> filter (\(a, b) -> a != no_pos && b != no_pos)
+  in edges
+
+def region_label_enlightened [h] [w] (img: [h][w]u32) =
+  -- Step 1: compute edges.
+  let edges = #[trace] map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
+  -- Step 2: Initialise DAG.
+  let forest = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
+  let (forest', _) =
+    loop (forest, edges) while length edges > 0 do
+      let possible_edges = filter (\(u, _) -> forest[u] == u) edges
+      let sources = map (.0) possible_edges
+      let targets = map (.1) possible_edges
+      let new_forest = reduce_by_index forest i64.max (-1) sources targets
+      let non_inserted_edges = filter (\(a, b) -> new_forest[a] != b) edges
+      let new_edges = map (\(a, b) -> norm_edge' (new_forest[a], new_forest[b])) non_inserted_edges
+      in (new_forest, new_edges)
+  in map (\a' -> loop a = a' while a != forest'[a] do forest'[a]) forest' |> unflatten
+\end{lstlisting}
+
+% TODO: Have to talk about the function and tests

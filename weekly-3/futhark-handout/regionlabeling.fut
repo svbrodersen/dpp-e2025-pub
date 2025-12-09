@@ -74,7 +74,7 @@ type edge = (pos, pos)
 def norm_edge (w: i64) ((a, b): edge) : edge =
   if pos_lte w a b then (a, b) else (b, a)
 
-def norm_edge' (a:i64, b:i64) : (i64, i64) =
+def norm_edge' (a: i64, b: i64) : (i64, i64) =
   if a <= b then (a, b) else (b, a)
 
 -- | Create normalised edges linking all neighbouring pixels with the same
@@ -98,7 +98,7 @@ def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
     |> filter (\(a, b) -> a != no_pos && b != no_pos)
   in edges
 
-def region_label_smarter [h] [w] (img: [h][w]u32) =
+def region_label_enlightened [h] [w] (img: [h][w]u32) =
   -- Step 1: compute edges.
   let edges = #[trace] map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
   -- Step 2: Initialise DAG.
@@ -114,4 +114,4 @@ def region_label_smarter [h] [w] (img: [h][w]u32) =
       in (new_forest, new_edges)
   in map (\a' -> loop a = a' while a != forest'[a] do forest'[a]) forest' |> unflatten
 
--- > :img (colourise_regions (region_label_smarter ($loadimg "regions-hard.png")))
+-- > :img (colourise_regions (region_label_enlightened ($loadimg "regions-hard.png")))
