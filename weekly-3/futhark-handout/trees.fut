@@ -88,7 +88,8 @@ def depths (steps: []step) : [](i64, i32) =
 def parents (D: []i64) : []i64 =
   let n = length D
   let depth_tuple = zip (D :> [n]i64) (iota n)
-  let parents = loop parents = [0] for i' < n - 1 do 
+  let init_array = if length D == 0 then [] else [0]
+  let parents = loop parents = init_array for i' < n - 1 do 
     let i = i' + 1
     let search_d = D[i] - 1
     let search_ds = map (\i -> depth_tuple[i]) (iota i)
@@ -118,4 +119,40 @@ def subtree_sizes [n] (steps: [n]step) : []i64 =
   in map i64.i32 res
 
 
-entry test_depth [n] (inp: string [n]) = input.steps inp |> depths
+-- ==
+-- entry: test_depth
+-- input { "d0 d2 d3 u u d5" }
+-- output {  [0i64, 1, 2, 1] [0i32, 2, 3, 5] }
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {  [0i64, 1, 1, 1, 2, 2, 1, 2] [0i32, 2, 3, 0, 4, 0, 0, 5] }
+-- input { "d1 d2 d3 d4 d5" }
+-- output {  [0i64, 1, 2, 3, 4] [1i32, 2, 3, 4, 5] }
+-- input { "" }
+-- output { empty([0]i64) empty([0]i32) }
+entry test_depth [n] (inp: string [n]) = input.steps inp |> depths |> unzip
+
+-- ==
+-- entry: test_parents
+-- input { "d0 d2 d3 u u d5" }
+-- output {  [0i64, 0, 1, 0] }
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {  [0i64, 0, 0, 0, 3, 3, 0, 6] }
+-- input { "d1 d2 d3 d4 d5" }
+-- output {  [0i64, 0, 1, 2, 3] }
+-- input { "" }
+-- output { empty([0]i64) }
+entry test_parents [n] (inp: string [n]) = 
+  let (D, _) =  input.steps inp |> depths |> unzip
+  in parents D
+
+
+-- == 
+-- entry: test_subtree_sizes
+-- input { "d0 d2 u d3 u d0 d4 u d0 u u d0 d5" }
+-- output {[14i64, 2, 3, 4, 4, 0, 5, 5]}
+-- input { "d1 d2 d3 d4 d5" }
+-- output {[15i64, 14, 12, 9, 5]}
+-- input { "" }
+-- output { empty([0]i64) }
+entry test_subtree_sizes [n] (inp: string [n])= input.steps inp |> subtree_sizes
+
