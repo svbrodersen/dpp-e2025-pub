@@ -61,5 +61,27 @@ of the full list. However, as an upper bound this would still be over the full
 array. As such inside the loop we do O($N$) work with a span of O($\lg N$). We
 do this within a loop giving total work of O($N^2$) and span O($N \lg N$).
 
-If we simply traverse the tree, then we could compute the parent tree in a sequential fashion. As such, this is by no means work efficient.
+We are able to compute the parent vector by a single traversal of the original
+tree and as such I would not state that this algorithm is work efficient. 
+
+\subsection{Implement \emph{subtree\_sizes}}
+Below my implementation of the \emph{subtree\_sizes} can be seen.
+\begin{lstlisting}[language={futhark}]
+def subtree_sizes [n] (steps: [n]step) : []i64 =
+  let (D, V) = depths steps |> unzip 
+  let P = parents D
+  let n = length D
+  let max_depth = reduce i64.max 0 D
+  let (res, _) = loop (res, cur_depth) = (copy V, max_depth) while cur_depth > 0 do
+      let indices = filter (\i -> D[i] == cur_depth) (iota n)
+      let values = map (\i -> res[i]) indices
+      let parent_indices = map (\i -> P[i]) indices
+      in (reduce_by_index res (+) (0) parent_indices values, cur_depth - 1)
+  in map i64.i32 res
+\end{lstlisting}
+
+This approach uses the naive bottom up iteration. Here we have a call to the
+reduce function, followed by a sequential loop, which runs over the depth of
+the tree. This loop calls a filter, map and reduce\_by\_index. 
+
 
