@@ -40,7 +40,7 @@ largest label throughout the entire image. This label would be in the bottom
 right corner of the image. At each iteration it moves one pixel in each
 direction, so before reaching the top left corner, it would have to do $H + W$
 iterations, where H is the height and W is the width. As the loop is
-sequential, this gives us a total work of O($O \times (H + W)$) and span of
+sequential, this gives us a total work of O($N \times (H + W)$) and span of
 O($H + W$). Note that $H + W - 1 =< H * W = N$\footnote{the -1 comes as in the
 example before we should not count the bottom left corner twice.} as both H and
 W are greater or equal to 1.
@@ -74,7 +74,7 @@ def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
 
 def region_label_enlightened [h] [w] (img: [h][w]u32) =
   -- Step 1: compute edges.
-  let edges = #[trace] map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
+  let edges = map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
   -- Step 2: Initialise DAG.
   let forest = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
   let (forest', _) =
@@ -89,4 +89,42 @@ def region_label_enlightened [h] [w] (img: [h][w]u32) =
   in map (\a' -> loop a = a' while a != forest'[a] do forest'[a]) forest' |> unflatten
 \end{lstlisting}
 
-% TODO: Have to talk about the function and tests
+The algorithm first computes the initial edges via the mk\_edges function. This
+function calls tabulate\_2d, which has work O($h \times w \times f$) and span
+O($S(f)$) where f is the function we run. In our case, this function has a
+constant work and span as we always map over 4 directions, and the rest of the
+operations are also constant work and span. Therefore, we have $O(h \times w) =
+O(n)$ work and O($1$) span for the tabulate\_2d. We then call flatten and
+filter, where the filter dominates our total work and span giving us a work of
+O($n$) and span of O($\lg n$).
+
+Back inside the main function, we call a map, flatten and tabulate, all of
+which are dominated by mk\_edges found before, and so provide nothing to the
+complexity. 
+
+Now comes the sequential loop. To argue about the number of iterations one has
+to think about how the "length" of the edges are updated. When we first
+initialize all the edges, the edges only point between neighbours. However,
+after one iteration the edges move to the parents, meaning that the "length" of
+the edges doubles. Then in the iteration after this, both again move to the
+parents, which beforehand had updated their edges themselves, meaning that we
+now have edges with lengths 4 and so they doubled again. In the next step it
+will be 8 and so on. If we ever reach a root node, then we insert the node and
+we are not taking it into account in the following iteration, and by the
+aforementioned logic the most amount of contractions we can do before reaching
+a root node is $\lg n$ as the length always doubles. This means, that the loop
+will at most run $\lg n$ times.
+
+Inside of the loop, we filter on the edges call reduce\_by\_idx on the possible
+edges, filter again and call a map. The reduce\_by\_idx is only ever called on
+each original edge once, as once it has been called upon, it is removed from
+the remaining edges. The filter on the other hand could be rerun on the same
+edges and in the worst case the length of the edges is n, so the inner loop has
+work O($n$) and span O($\lg n$) giving us a total work of O($n \lg n$) and span
+O($\lg^2 n$).
+
+\subsection*{Note on testing}
+Both of my algorithms were simply tested on the provided images. When I run the
+\emph{futhark literate regionlabeling.fut}, it produces matching colored images
+and they both look like what I would expect, so I believe both algorithms to be
+functional.

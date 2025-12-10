@@ -1,76 +1,44 @@
-Start with some utility definitions for handling directions and positions.
+-- Start with some utility definitions for handling directions and positions.
 
+-- | A cardinal direction, with `#c` being current location ("centre").
 
-| A cardinal direction, with `#c` being current location ("centre").
-
-```futhark
 type dir = #n | #w | #e | #s
-```
 
-| Position in a grid.
-
-```futhark
+-- | Position in a grid.
 type pos = (i64, i64)
-```
 
-| A representative for an inval(id position.
-
-```futhark
+-- | A representative for an inval(id position.
 def no_pos : pos = (-1, -1)
-```
 
-| Less-than-or-equal comparison of positions. Requires you to pass in the
-grid width.
-
-```futhark
+-- | Less-than-or-equal comparison of positions. Requires you to pass in the
+-- grid width.
 def pos_lte (w: i64) ((ax, ay): pos) ((bx, by): pos) : bool =
   ax * w + ay <= bx * w + by
-```
 
-| Move along direction.
-
-```futhark
+-- | Move along direction.
 def move (d: dir) ((i, j): pos) =
   match d
   case #n -> (i - 1, j)
   case #w -> (i, j - 1)
   case #e -> (i, j + 1)
   case #s -> (i + 1, j)
-```
 
-| Turn a position into a flat index, given a grid width.
-
-```futhark
+-- | Turn a position into a flat index, given a grid width.
 def flat_pos (w: i64) ((x, y): pos) : i64 = x * w + y
-```
 
-| Turn a flat index into a position, given a grid width.
-
-```futhark
+-- | Turn a flat index into a position, given a grid width.
 def unflat_pos (w: i64) (i: i64) : pos = (i // w, i %% w)
-```
 
-| Is this position in bounds in some grid?
-
-```futhark
+-- | Is this position in bounds in some grid?
 def in_bounds [h] [w] 'a (_: [h][w]a) ((i, j): pos) =
   i >= 0 && i < h && j >= 0 && j < w
-```
 
-| Get element at position in grid.
-
-```futhark
+-- | Get element at position in grid.
 def get 'a ((i, j): pos) (g: [][]a) =
   g[i, j]
-```
 
-```
-> :img ($loadimg "regions-hard.png")
-```
+-- > :img ($loadimg "regions-hard.png")
 
-![](regionlabeling-img/3869a5e5b46cf460bb8b5adfbc18728a-img.png)
-
-```futhark
 def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
   let labels_flat = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
   let (_, res) =
@@ -92,40 +60,25 @@ def region_label_naive [h] [w] (img: [h][w]u32) : [h][w]i64 =
             labels_flat
       in (current_labels, new_labels)
   in unflatten (res :> [h * w]i64)
-```
 
-| Could be improved. This is unlikely to produce something very legible.
-
-```futhark
+-- | Could be improved. This is unlikely to produce something very legible.
 def colourise_regions [h] [w] (labels: [h][w]i64) : [h][w]u32 =
   let f l = u32.i64 l
   in map (map f) labels
-```
 
-```
-> :img (colourise_regions (region_label_naive ($loadimg "regions-hard.png")))
-```
+-- > :img (colourise_regions (region_label_naive ($loadimg "regions-hard.png")))
 
-![](regionlabeling-img/a4201d901576b1ed2422f77ce1f84ddb-img.png)
-
-```futhark
 type edge = (pos, pos)
-```
 
-| Normalise an edge such that it goes from the lesser index to the greater.
-
-```futhark
+-- | Normalise an edge such that it goes from the lesser index to the greater.
 def norm_edge (w: i64) ((a, b): edge) : edge =
   if pos_lte w a b then (a, b) else (b, a)
 
-def norm_edge' (a:i64, b:i64) : (i64, i64) =
+def norm_edge' (a: i64, b: i64) : (i64, i64) =
   if a <= b then (a, b) else (b, a)
-```
 
-| Create normalised edges linking all neighbouring pixels with the same
-colour.
-
-```futhark
+-- | Create normalised edges linking all neighbouring pixels with the same
+-- colour.
 def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
   let directions = [#n, #w, #s, #e]
   let edges =
@@ -145,9 +98,9 @@ def mk_edges [h] [w] (img: [h][w]u32) : ?[k].[k]edge =
     |> filter (\(a, b) -> a != no_pos && b != no_pos)
   in edges
 
-def region_label_smarter [h] [w] (img: [h][w]u32) =
+def region_label_enlightened [h] [w] (img: [h][w]u32) =
   -- Step 1: compute edges.
-  let edges = #[trace] map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
+  let edges = map (\(a, b) -> (flat_pos w a, flat_pos w b)) (mk_edges img)
   -- Step 2: Initialise DAG.
   let forest = flatten (tabulate_2d h w \i j -> flat_pos w (i, j))
   let (forest', _) =
@@ -160,10 +113,5 @@ def region_label_smarter [h] [w] (img: [h][w]u32) =
       let new_edges = map (\(a, b) -> norm_edge' (new_forest[a], new_forest[b])) non_inserted_edges
       in (new_forest, new_edges)
   in map (\a' -> loop a = a' while a != forest'[a] do forest'[a]) forest' |> unflatten
-```
 
-```
-> :img (colourise_regions (region_label_smarter ($loadimg "regions-hard.png")))
-```
-
-![](regionlabeling-img/1a3f81211ddf346c110e4a47e1a39de8-img.png)
+-- > :img (colourise_regions (region_label_enlightened ($loadimg "regions-hard.png")))

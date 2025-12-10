@@ -51,7 +51,10 @@ def parents (D: []i64) : []i64 =
 \end{lstlisting}
 We initialize the parents with the root being itself, and then otherwise we
 search to the left of us for items with a value less than the current index,
-where we choose the higher index in case of a tie. 
+where we choose the higher index in case of a tie. The slides did propose a
+linear search to the left of the current index, but I decided to instead use
+the reduce\_comm to search on the left hand side, which might not be beneficial
+in practise but should reduce the span of the algorithm.
 
 The algorithm runs a sequential loop over all elements (except the root).
 Inside this loop it runs a map and a reduce\_comm. The reduce\_comm only runs
@@ -60,8 +63,11 @@ of the full list. However, as an upper bound this would still be over the full
 array. As such inside the loop we do O($N$) work with a span of O($\lg N$). We
 do this within a loop giving total work of O($N^2$) and span O($N \lg N$).
 
-We are able to compute the parent vector by a single traversal of the original
-tree and as such I would not state that this algorithm is work efficient. 
+As hinted to on the slides, one more efficient algorithm would be to sort the
+depths keeping track of the indices and tie breaking on said indices. This
+could be done in O($n \lg n$) work. Then the sequential loop would just have to
+use binary search with the same tie breaker. This would lead to work of O($2n
+\lg n$) in total, so my algorithm is not work-efficient.
 
 \subsection{Implement \emph{subtree\_sizes}}
 Below my implementation of the \emph{subtree\_sizes} can be seen.
@@ -127,3 +133,5 @@ entry test_parents [n] (inp: string [n]) =
 -- output { empty([0]i64) }
 entry test_subtree_sizes [n] (inp: string [n]) = input.steps inp |> subtree_sizes
 \end{lstlisting}
+
+The tests can be run by running \emph{futhark test trees.fut}.
