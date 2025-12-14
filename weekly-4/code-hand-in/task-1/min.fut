@@ -39,8 +39,24 @@ entry mapomin_vjp2 [n] (as : [n]f32) (adj : f32) : (f32, [n]f32) =
 --     the adjoint of `as`
 ----------------------------------------------------------------
 def task_mapomin [n] (as : [n]f32) (y_bar : f32) : (f32, [n]f32) =
-  -- please replace the dummy implementation bellow with correct code
-  (y_bar, as)
+  let bs = map(\a -> let b = a*a - 0.5*a in b) as
+  let (imin, y) = zip (iota n) bs |> reduce_comm (\(i1, b1) (i2, b2) ->
+      if b1 == b2 then 
+        if i1 < i2 then
+          (i1, b1)
+        else 
+          (i2, b2)
+      else if b1 < b2 then
+        (i1, b1)
+      else 
+        (i2, b2)
+  ) (n, f32.highest)
+  let bs_bar = if imin >= n then bs else let bs[imin] = bs[imin] + y_bar in bs
+  let as_bar = map2 (\a b_bar -> 
+    let a_bar = (2*a - 0.5) * b_bar
+    in b_bar + a_bar
+  ) as bs_bar
+  in (y, as_bar)
 
 entry mapomin_manual [n] (inp : [n]f32) (adj : f32) : (f32, [n]f32) =
   task_mapomin inp adj
