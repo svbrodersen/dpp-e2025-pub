@@ -80,7 +80,9 @@ entry main [n] [d]
       --                        cost'_{i,j} / cost''_{i,j}
       --------------------------------------------------------
       let new_centers =
-        let f i j = cluster_centers[i, j] - (cost'[i, j] / cost''[i, j])
+        let f i j =
+          let tmp = cost''[i, j]
+          in if tmp == 0f32 then 0f32 else cluster_centers[i, j] - (cost'[i, j] / cost''[i, j])
         in map (\i -> map (f i) (iota d)) (iota k)
       -- That's it, do not touch the code below
       -- update stopping condition
