@@ -17,7 +17,7 @@ def euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
 def cost [n][k][d] (points: [n][d]f32) (centres: [k][d]f32) : f32 =
   let flat_centers = flatten centres
   let flat_points = flatten points
-  let min_distances = map (\p -> map (\c -> (f32.abs (p - c))**2) flat_centers |> reduce f32.min f32.inf) flat_points
+  let min_distances = map (\p -> map (\c -> (p - c)**2) flat_centers |> reduce f32.min f32.inf) flat_points
   in reduce (+) 0f32 min_distances
 
 def tolerance = 1 : f32
@@ -26,11 +26,11 @@ entry main [n][d]
         (_threshold: i32) (k: i64) (max_iterations: i32)
         (points: [n][d]f32) =
   -- Assign arbitrary initial cluster centres.
-  let cluster_centres = take k (reverse points)
+  let cluster_centers = take k (reverse points)
   let i = 0
   let stop = false
-  let (cluster_centres, _i, _stop) =
-    loop (cluster_centres : [k][d]f32, i, stop)
+  let (cluster_centers, _i, _stop) =
+    loop (cluster_centers : [k][d]f32, i, stop)
     while i < max_iterations && !stop do
       ------------------------------------------------------
       -- Task 4 (b):
@@ -52,8 +52,9 @@ entry main [n][d]
       --    (b) the current cluster centers
       --    (c) a `k x d` matrix of ones (see slides)
       -------------------------------------------------------
-      let (cost', cost'') = ( replicate k (replicate d 1f32)
-                            , replicate k (replicate d 1f32))
+      let (cost', cost'') = 
+        let f centers' = vjp (cost points) centers' 1
+        in jvp2 f cluster_centers (, jvp2 (\x -> vjp x)
       
       
       --------------------------------------------------------
