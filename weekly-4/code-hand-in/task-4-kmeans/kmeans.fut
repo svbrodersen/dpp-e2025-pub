@@ -15,7 +15,10 @@ def euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32): f32 =
 -- of lecture `L7and8-AD.pdf`
 ----------------------------------------------------------------
 def cost [n][k][d] (points: [n][d]f32) (centres: [k][d]f32) : f32 =
-  1.0f32
+  let flat_centers = flatten centres
+  let flat_points = flatten points
+  let min_distances = map (\p -> map (\c -> (f32.abs (p - c))**2) flat_centers |> reduce f32.min 0f32) flat_points
+  in reduce (+) 0f32 min_distances
 
 def tolerance = 1 : f32
 

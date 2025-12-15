@@ -46,7 +46,7 @@ def vjp2_red_inv 't 't_lft [n]
   let as_bar = map (\a ->
     let p' = op_inv t_prim a
     in vjp (\x -> op x  p') a rs_bar
-  ) as 
+  ) as
   in (y, as_bar)
 
 ----------------------------------------------------------------------
@@ -97,6 +97,13 @@ def vjp_redbyind_inv 't 't_lft [m] [n]
             -- \^ function params
                (dst: [m]t) (ks: [n]i64) (vs: [n]t) (rs_bar: [m]t)
              : ([m]t, [m]t, [n]t) =
-  --
-  -- please replace the dummy code below with your correct implementation
-  (dst, rs_bar, vs)
+  let hsL = map cfwd vs |> hist op_lft ne m ks
+  let hs = map cbwd hsL
+  let rs = map2 op dst hs
+  let g d h r_bar = vjp (\x -> op x d) h r_bar
+  let hs_bar = map3 g dst hs rs_bar
+  let dst_bar = map3 g hs dst rs_bar
+  let f k v = let p' = op_inv hsL[k] v in vjp (\x -> op x p') v hs_bar[k]
+  let vs_bar = map2 f ks vs
+  in (rs, dst_bar, vs_bar)
+
