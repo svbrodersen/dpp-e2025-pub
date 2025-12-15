@@ -5,10 +5,10 @@ data of is and $Dv$ be the flat data of vss. Then we would have the following
 flattening rules for the scatter inside a map:
 \begin{lstlisting}
   let (Bx, _) = mkFlagArray Sx 0 (iota (length Sx))
-  let (Bi, flags') = mkFlagArray Si (iota (length Si))
+  let (_, flags') = mkFlagArray Si (iota (length Si))
   let flags = map bool.u32 flags'
   let ii1s = sgmScan (+) 0 flags flags'
-  let glob_idxs = map2 (\sgm ind -> ind + Bx[sgm]) ii1s Di
+  let glob_idxs = map2 (\sgm ind -> if ind > 0 && ind < Sx[sgm] then ind + Bx[sgm] else -1) ii1s Di
   in res = scatter Dx glob_idxs Dv
 \end{lstlisting}
 
