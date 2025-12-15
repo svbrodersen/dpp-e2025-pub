@@ -41,9 +41,13 @@ def vjp2_red_inv 't 't_lft [n]
                (rs_bar: t)
              : (t, [n]t) =
   -- please replace the dummy code below with your correct implementation
-  (rs_bar, as)
-
-
+  let t_prim = map cfwd as |> reduce_comm (op_lft) ne
+  let y = cbwd t_prim
+  let as_bar = map (\a ->
+    let p' = op_inv t_prim a
+    in vjp (\x -> op x  p') a rs_bar
+  ) as 
+  in (y, as_bar)
 
 ----------------------------------------------------------------------
 -- | Task 3:

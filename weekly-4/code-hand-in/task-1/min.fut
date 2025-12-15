@@ -51,10 +51,10 @@ def task_mapomin [n] (as : [n]f32) (y_bar : f32) : (f32, [n]f32) =
       else 
         (i2, b2)
   ) (n, f32.highest)
-  let bs_bar = if imin >= n then bs else let bs[imin] = bs[imin] + y_bar in bs
+  let bs_bar = tabulate n (\i -> if i == imin then y_bar else 0.0f32)
   let as_bar = map2 (\a b_bar -> 
     let a_bar = (2*a - 0.5) * b_bar
-    in b_bar + a_bar
+    in a_bar
   ) as bs_bar
   in (y, as_bar)
 
