@@ -9,7 +9,10 @@ Then we have the following flattening rules for the reduce\_by\_index inside a m
   let (Bi, flags') = mkFlagArray Si (iota (length Si))
   let flags = map bool.u32 flags'
   let ii1s = sgmScan (+) 0 flags flags'
-  let glob_idxs = map2 (\sgm ind -> if ind > 0 && ind < Sx[sgm] then ind + Bx[sgm] else -1) ii1s Di
+  let glob_idxs = map2 (\sgm ind -> 
+    if ind >= 0 && ind < Sx[sgm] then 
+      ind + Bx[sgm] 
+    else -1) ii1s Di
   in res = reduce_by_idx ($\odot$) $0_\odot$ Dx glob_idxs Dv
 \end{lstlisting}
 
