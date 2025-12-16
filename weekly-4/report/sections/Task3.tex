@@ -1,0 +1,60 @@
+\section{Generic Reverse-AD of Reduce-By-Index with Invertible Operator}
+My code validates and is provided below:
+\begin{lstlisting}[language={futhark}]
+def vjp_redbyind_inv 't 't_lft [m] [n]
+                     (op: t -> t -> t)
+                     (op_lft: t_lft -> t_lft -> t_lft)
+                     (ne: t_lft)
+                     (cfwd: t -> t_lft)
+                     (cbwd: t_lft -> t)
+                     (op_inv: t_lft -> t -> t)
+                     -- \^ function params
+                     (dst: [m]t)
+                     (ks: [n]i64)
+                     (vs: [n]t)
+                     (rs_bar: [m]t) : ([m]t, [m]t, [n]t) =
+  let hsL = map cfwd vs |> hist op_lft ne m ks
+  let hs = map cbwd hsL
+  let rs = map2 op dst hs
+  let g d h r_bar = vjp (\x -> op x d) h r_bar
+  let hs_bar = map3 g dst hs rs_bar
+  let dst_bar = map3 g hs dst rs_bar
+  let f k v = let p' = op_inv hsL[k] v in vjp (\x -> op x p') v hs_bar[k]
+  let vs_bar = map2 f ks vs
+  in (rs, dst_bar, vs_bar)
+\end{lstlisting}
+
+In the general case of inverting the reduce\_by\_idx we would need multiple
+scans. Hinted to via the slides, this could be done by sorting the key-value
+pairs according to the keys, but still would be a very expensive operation. In
+this special case, we are able to completely circumvent this and simply use
+maps only (together with the operator differentiated and inverse). This leads
+to an order of magnitudes faster execution than that of the none specialised
+method.
+
+\begin{table}[H]
+\centering
+\caption{Benchmark runtimes and overheads for Mul and Sop (10M elements).}
+\label{tab:histogram}
+\begin{tabular}{l l ccc ccc}
+\toprule
+Operator & Method & \multicolumn{3}{c}{Runtime (\textmu s)} & \multicolumn{3}{c}{Overhead from primal} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8}
+      &        & 31 bins & 401 bins & 50k bins & 31 bins & 401 bins & 50k bins \\
+\midrule
+\multirow{3}{*}{Mul} 
+ & primal    & 231  & 228   & 621   & -    & -    & -    \\
+ & vjp2      & 770  & 632   & 2143  & 3.33 & 2.77 & 3.45 \\
+ & vjp2\_inv & 569  & 478   & 1060  & 2.46 & 2.10 & 1.71 \\
+\midrule
+\multirow{3}{*}{Sop} 
+ & primal    & 344  & 329   & 2145  & -     & -     & -    \\
+ & vjp2      & 9986 & 13133 & 20682 & 29.03 & 39.92 & 9.64 \\
+ & vjp2\_inv & 579  & 591   & 2597  & 1.68  & 1.80  & 1.21 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The benchmarking results can be seen in Table~\ref{tab:histogram}. Again, we
+see that the Mul has quite similar runtimes but in the non-builtin operator
+sop, there is a significant difference in the runtimes.

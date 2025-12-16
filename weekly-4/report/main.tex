@@ -1,0 +1,51 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{etoolbox}
+\usepackage{booktabs}   % for \toprule, \midrule, \bottomrule
+\usepackage{multirow}   % for \multirow
+\usepackage{textcomp}   % for \textmu
+\usepackage{float}
+
+
+\BeforeBeginEnvironment{lstlisting}{\par\noindent\begin{minipage}{\linewidth}}
+\AfterEndEnvironment{lstlisting}{\end{minipage}\par\addvspace{\topskip}}
+
+\input{futhark.tex}
+\lstdefinestyle{futharkStyle}{
+  language=futhark,
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  tabsize=4,
+  frame=single,
+  belowcaptionskip=1\baselineskip,
+  frame=none,
+  numbers=none,
+  keywordstyle=\bfseries\color{red},
+  backgroundcolor=\color{gray!10!white},
+}
+\lstset{style=futharkStyle}
+
+\title{DPP Assignment 4}
+\author{Simon Vinding Brodersen(rzn875)}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\input{sections/Task1}
+\input{sections/Task2}
+\input{sections/Task3}
+\input{sections/Task4}
+
+\end{document}

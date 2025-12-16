@@ -1,0 +1,33 @@
+\section{Implement kMeans with Nested Forward \& Reverse AD}
+My code validates and is provided below:
+\begin{lstlisting}[language={futhark}]
+-- Task 4 (a)
+def cost [n] [k] [d] (points: [n][d]f32) (centres: [k][d]f32) : f32 =
+  let min_distances =
+    map (\p ->
+           map (\c -> euclid_dist_2 p c) centres
+           |> reduce f32.min f32.inf)
+        points
+  in reduce (+) 0f32 min_distances
+
+def tolerance = 1 : f32
+
+-- Task 4 (b)
+let (cost', cost'') =
+  let f centers' = vjp (cost points) centers' 1f32
+  in jvp2 f cluster_centers (replicate (k * d) 1f32 |> unflatten)
+
+-- Task 4 (c)
+let new_centers =
+  let f i j =
+    let tmp = cost''[i, j]
+    in if tmp == 0f32
+       then cluster_centers[i, j]
+       else cluster_centers[i
+            ,j]
+            - (cost'[i, j] / cost''[i, j])
+  in map (\i -> map (f i) (iota d)) (iota k)
+\end{lstlisting}
+
+The cost function simply nests a map inside a map finding the distance from
+each point to each center, and then finding the minimum.

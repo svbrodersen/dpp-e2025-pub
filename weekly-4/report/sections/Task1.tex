@@ -1,0 +1,60 @@
+\section{Apply Reverse AD to a \emph{map - reduce min} Composition}
+My code validates and is provided below:
+\begin{lstlisting}[language={futhark}]
+def task_mapomin [n] (as: [n]f32) (y_bar: f32) : (f32, [n]f32) =
+  let bs = map (\a -> let b = a * a - 0.5 * a in b) as
+  let (imin, y) =
+    zip (iota n) bs
+    |> reduce_comm (\(i1, b1) (i2, b2) ->
+                      if b1 == b2
+                      then if i1 < i2
+                           then (i1, b1)
+                           else (i2, b2)
+                      else if b1 < b2
+                      then (i1, b1)
+                      else (i2, b2))
+                   (n, f32.highest)
+  let bs_bar = tabulate n (\i -> if i == imin then y_bar else 0.0f32)
+  let as_bar =
+    map2 (\a b_bar ->
+            let a_bar = (2 * a - 0.5) * b_bar
+            in a_bar)
+         as
+         bs_bar
+  in (y, as_bar)
+\end{lstlisting}
+
+The lifted operator is what is the function passed to the reduce\_comm
+function. This is both associative and cumulative, as I do tie breaks on the
+indices. Essentially this works like the regular minimum function, but breaking
+ties by choosing the smaller of the two indices. This means that no matter what
+order you give the inputs, if the inputs are equivalent, then the result is the
+same.
+
+First, then primal is called, where we have substituted the reduce\_comm call
+with the one including the lifted operator mentioned before. Next, we have the
+tabulate call, which is what corresponds to the adjoint of the reduce\_comm.
+This tabulate also populates the $\bar{as}$, which previously is not used and
+as such is initialized to 0. The last map, then corresponds to the adjoint of
+the map.
+
+\begin{table}[H]
+\centering
+\caption{Benchmark runtimes and speedups for MapOmin.}
+\label{tab:min}
+\begin{tabular}{l cc cc}
+\toprule
+Method & \multicolumn{2}{c}{Runtime (\textmu s)} & \multicolumn{2}{c}{Overhead from primal} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+       & 10M elements & 100M elements & 10M elements & 100M elements \\
+\midrule
+pomin\_primal & 67  & 303   & -    & - \\
+vjp2          & 157 & 910   & 2.34 & 3.00 \\
+manual        & 147 & 1029  & 2.19 & 3.40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The runtimes can be seen in Table~\ref{tab:min}. Here we see that in general
+the run times of my implementation is very close to that of the built-in vjp2,
+which assuming it also does the same optimisation is to be expected.
