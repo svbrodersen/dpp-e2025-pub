@@ -15,9 +15,11 @@ def euclid_dist_2 [d] (pt1: [d]f32) (pt2: [d]f32) : f32 =
 -- of lecture `L7and8-AD.pdf`
 ----------------------------------------------------------------
 def cost [n] [k] [d] (points: [n][d]f32) (centres: [k][d]f32) : f32 =
-  let flat_centers = flatten centres
-  let flat_points = flatten points
-  let min_distances = map (\p -> map (\c -> (p - c) ** 2) flat_centers |> reduce f32.min f32.inf) flat_points
+  let min_distances =
+    map (\p ->
+           map (\c -> euclid_dist_2 p c) centres
+           |> reduce f32.min f32.inf)
+        points
   in reduce (+) 0f32 min_distances
 
 def tolerance = 1 : f32
@@ -55,11 +57,8 @@ entry main [n] [d]
       --    (c) a `k x d` matrix of ones (see slides)
       -------------------------------------------------------
       let (cost', cost'') =
-        let f centers' = vjp (cost points) centers' 1
-        in jvp2 f cluster_centers (tabulate_2d k d (\i j ->
-                                                      if i == j
-                                                      then 1f32
-                                                      else 0f32))
+        let f centers' = vjp (cost points) centers' 1f32
+        in jvp2 f cluster_centers (replicate (k * d) 1f32 |> unflatten)
       --------------------------------------------------------
       -- Task 4 (c):
       -- Please replace the dummy implementation below with
@@ -82,7 +81,11 @@ entry main [n] [d]
       let new_centers =
         let f i j =
           let tmp = cost''[i, j]
-          in if tmp == 0f32 then cluster_centers[i, j] else cluster_centers[i, j] - (cost'[i, j] / cost''[i, j])
+          in if tmp == 0f32
+             then cluster_centers[i, j]
+             else cluster_centers[i
+                  ,j]
+                  - (cost'[i, j] / cost''[i, j])
         in map (\i -> map (f i) (iota d)) (iota k)
       -- That's it, do not touch the code below
       -- update stopping condition
