@@ -29,5 +29,22 @@ let new_centers =
   in map (\i -> map (f i) (iota d)) (iota k)
 \end{lstlisting}
 
-The cost function simply nests a map inside a map finding the distance from
-each point to each center, and then finding the minimum.
+\paragraph{Task a:} The cost function simply nests a map inside a map finding the distance from
+each point to each center, and then finding the minimum. Once this is done, we
+simply reduce over all of the minimum distances to find the cost.The
+euclid\_dist\_2 function was provided to us.
+
+\paragraph{Task b:} Here I simply followed the comments explanation. I.e. I
+apply the vjp function to the (cost points) in the point that corresponds to
+the current cluster center, which is passed to the function f and simply
+adjoint with 1. Jvp2 is then applied to this function, which receives the
+cluster centers and applies them together with the matrix of ones.
+
+\paragraph{Task c:} This task again follows the comment, but builds upon this
+with checking for division by 0. In such a case, we do not update the value of
+the center, and in all other cases, we simply provide what the comment states.
+This is then mapped to all i and j combinations. 
+
+
+
+
