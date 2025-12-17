@@ -8,10 +8,6 @@ run: red-adj-ppad.fut ops.fut test-red.fut test-hist.fut gen-vjp2-comminv.fut
 	futhark bench --backend=cuda test-red.fut
 	futhark bench --backend=cuda test-hist.fut
 
-bench-json: red-adj-ppad.fut ops.fut test-red.fut test-hist.fut gen-vjp2-comminv.fut
-	futhark bench --backend=cuda --json=test_red-cuda.json test-red.fut
-	futhark bench --backend=cuda --json=test_hist-cuda.json test-hist.fut
-
 datasets:
 	mkdir -p data
 	futhark dataset --f64-bounds=0.795:1.22 -g [100000]f64 -g f64 -b > data/red-100K.in
